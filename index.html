@@ -242,7 +242,7 @@
             try {
                 console.log("모델 로딩을 시작합니다...");
                 await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL), // 이렇게 변경!
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
                 ]);
                 modelsLoaded = true;
