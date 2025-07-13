@@ -109,7 +109,6 @@
         .result-card h3 { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 15px;}
         .result-card ul { padding-left: 20px; margin: 0; list-style-type: none;}
         .result-card li { margin-bottom: 12px; }
-        /* [추가] 사진 분석 결과 텍스트 스타일 */
         .photo-basis {
             font-size: 0.8em;
             color: #666;
@@ -153,10 +152,10 @@
                     <ellipse id="oval-guide" cx="150" cy="200" rx="100" ry="130" stroke="rgba(0,0,0,0.5)" stroke-width="2" stroke-dasharray="5,5" fill="none" />
                     <line id="red-line" x1="50" y1="200" x2="250" y2="200" stroke="red" stroke-width="1.5" />
                     <line id="blue-line" x1="150" y1="70" x2="150" y2="330" stroke="blue" stroke-width="1.5" />
-                    <line class="green-line" x1="75" y1="70" x2="75" y2="330" stroke="green" stroke-width="1" />
-                    <line class="green-line" x1="125" y1="70" x2="125" y2="330" stroke="green" stroke-width="1" />
-                    <line class="green-line" x1="175" y1="70" x2="175" y2="330" stroke="green" stroke-width="1" />
-                    <line class="green-line" x1="225" y1="70" x2="225" y2="330" stroke="green" stroke-width="1" />
+                    
+                    <line class="green-line" x1="116.67" y1="70" x2="116.67" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" x1="183.33" y1="70" x2="183.33" y2="330" stroke="green" stroke-width="1" />
+                    
                     <line id="draggable-line-visual" x1="50" y1="220" x2="250" y2="220" stroke="skyblue" stroke-width="2" />
                     <line class="draggable-line" id="draggable-line-handle" x1="50" y1="220" x2="250" y2="220" />
                 </svg>
@@ -355,20 +354,26 @@
         redLine.setAttribute('x2', 150 + rx);
         blueLine.setAttribute('y1', 200 - ry);
         blueLine.setAttribute('y2', 200 + ry);
-        const sectionWidth = (rx * 2) / 4;
+        
+        // [수정] 2개의 선으로 3등분 하도록 로직 변경
+        const sectionWidth = (rx * 2) / 3;
         const startX = 150 - rx;
-        greenLines.forEach((line, index) => {
-            const xPos = startX + (sectionWidth * (index + 1));
-            line.setAttribute('x1', xPos);
-            line.setAttribute('x2', xPos);
-            line.setAttribute('y1', 200 - ry);
-            line.setAttribute('y2', 200 + ry);
-        });
+        greenLines[0].setAttribute('x1', startX + sectionWidth);
+        greenLines[0].setAttribute('x2', startX + sectionWidth);
+        greenLines[0].setAttribute('y1', 200 - ry);
+        greenLines[0].setAttribute('y2', 200 + ry);
+        
+        greenLines[1].setAttribute('x1', startX + (sectionWidth * 2));
+        greenLines[1].setAttribute('x2', startX + (sectionWidth * 2));
+        greenLines[1].setAttribute('y1', 200 - ry);
+        greenLines[1].setAttribute('y2', 200 + ry);
+
         draggableLineVisual.setAttribute('x1', 150 - rx);
         draggableLineVisual.setAttribute('x2', 150 + rx);
         draggableLineHandle.setAttribute('x1', 150 - rx);
         draggableLineHandle.setAttribute('x2', 150 + rx);
     }
+
     if(guidelineSizeSlider) {
         guidelineSizeSlider.addEventListener('input', (e) => {
             updateGuidelineSize(e.target.value);
@@ -378,7 +383,8 @@
     
     let isImageDragging = false;
     let isLineDragging = false;
-    let startX, startY, initialLeft, initialTop;
+    let startX_drag, startY_drag, initialLeft, initialTop;
+
     if (guideContainer) {
         guideContainer.addEventListener('mousedown', e => {
             if (e.target.id === 'draggable-line-handle') {
@@ -390,12 +396,13 @@
             e.preventDefault();
             isImageDragging = true;
             userImage.style.cursor = 'grabbing';
-            startX = e.clientX;
-            startY = e.clientY;
+            startX_drag = e.clientX;
+            startY_drag = e.clientY;
             initialLeft = userImage.offsetLeft;
             initialTop = userImage.offsetTop;
         });
     }
+
     window.addEventListener('mousemove', (e) => {
         if (isLineDragging && guidelineSVG) {
             const CTM = guidelineSVG.getScreenCTM().inverse();
@@ -410,10 +417,11 @@
             return;
         }
         if (isImageDragging && userImage) {
-            userImage.style.left = `${initialLeft + (e.clientX - startX)}px`;
-            userImage.style.top = `${initialTop + (e.clientY - startY)}px`;
+            userImage.style.left = `${initialLeft + (e.clientX - startX_drag)}px`;
+            userImage.style.top = `${initialTop + (e.clientY - startY_drag)}px`;
         }
     });
+
     window.addEventListener('mouseup', () => {
         if(isLineDragging) {
             isLineDragging = false;
@@ -490,7 +498,7 @@
             const step6 = (step4 === 'A' || step2 === 'C') ? 'E' : 'F';
             
             const analysisResult = { step1, step2, step3, step4, step5, step6 };
-            displayResults(analysisResult, true); // 사진 분석임을 알림
+            displayResults(analysisResult, true);
             showPage('result-page');
         } catch (error) {
             console.error("사진 분석 중 오류 발생:", error);
@@ -515,15 +523,13 @@
             alert("모든 질문에 답변해주세요!");
             return;
         }
-        displayResults(analysisResult, false); // 설문 분석임을 알림
+        displayResults(analysisResult, false);
         showPage('result-page');
     }
 
     function displayResults(analysis, fromPhoto = false) {
         const content = document.getElementById('result-content');
         if (!content) return;
-
-        // 추천 멘트 텍스트
         const resultTexts = {
             step1: { A: "도톰한", B: "얇은" },
             step2: { C: "산이 없는 부드러운 곡선 형태", D: "산이 있는 직선적이고 각진 형태" },
@@ -532,8 +538,6 @@
             step5: { C: "얼굴이 덜 동그래 보이도록 조금 길게", D: "얼굴의 세로 길이를 보완하도록 조금 짧게" },
             step6: { E: "옅고 부드럽게 표현하는", F: "또렷하고 결을 살려 표현하는" }
         };
-
-        // [추가] 사진 분석 시 보여줄 근거 텍스트
         const photoBasisTexts = {
             step1: { A: "얼굴이 길거나 눈과 눈썹 사이가 먼 편", B: "얼굴이 짧거나 눈과 눈썹 사이가 좁은 편" },
             step2: { C: "턱선이 145도 이상으로 부드러운 편", D: "턱선이 145도 미만으로 각진 편" },
@@ -542,7 +546,6 @@
             step5: { C: "얼굴 세로/가로 비율이 1.2 미만으로 동그란 편", D: "얼굴 세로/가로 비율이 1.2 이상으로 긴 편" },
             step6: { E: "부드러운 인상(내심안 또는 둥근 턱)", F: "또렷한 인상(외심안 또는 각진 턱)" }
         };
-
         let title, intro, outro;
         if (analysis.step2 === 'C') {
             title = `당신의 매력을 극대화할 "<strong>부드럽고 청순한 동안 눈썹</strong>"`;
@@ -553,19 +556,14 @@
             intro = "축하드립니다! 당신은 세련되고 뚜렷하며 고급스러운 성숙한 인상을 가장 잘 나타낼 수 있는 타입입니다. 당신의 매력을 더욱 강조할 눈썹은 직선적인 요소를 활용하여 또렷한 인상을 부여하고, 적절한 산을 통해 입체감과 시원함을 더하는 것이 중요합니다.";
             outro = "이 모든 요소를 종합하여 당신의 얼굴에 찰떡같이 어울리는 눈썹을 완성해 보세요. 당신의 세련되고 강렬한 매력을 더욱 빛나게 할 것입니다!";
         }
-        
         let listItemsHTML = '';
         for (let i = 1; i <= 6; i++) {
             const stepKey = `step${i}`;
             const analysisResult = analysis[stepKey];
             const recommendationText = resultTexts[stepKey][analysisResult];
-            
-            // 사진 분석일 경우에만 근거 텍스트 추가
             const basisText = fromPhoto ? `<span class="photo-basis">(사진 분석: ${photoBasisTexts[stepKey][analysisResult]})</span>` : '';
-            
             const stepTitles = ["두께:", "위쪽 모양:", "아래쪽 모양:", "산/꼬리 길이:", "전체 길이:", "앞머리:"];
             const stepSuffix = (i === 1) ? " 눈썹" : (i === 5) ? " 그리는 눈썹" : (i === 6) ? " 앞머리" : "";
-
             listItemsHTML += `
                 <li>
                     <strong>${stepTitles[i-1]}</strong> ${recommendationText}${stepSuffix}
@@ -573,7 +571,6 @@
                 </li>
             `;
         }
-
         const resultHTML = `
             <div class="result-card">
                 <h3>${title}</h3>
