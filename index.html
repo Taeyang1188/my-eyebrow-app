@@ -335,95 +335,106 @@
             userImage.style.opacity = e.target.value;
         });
         
-        // [수정] 사진 분석 함수 (SsdMobilenetv1 옵션으로 변경)
-        async function analyzePhoto() {
-            if (!modelsLoaded) {
-                alert("분석 모델이 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.");
-                return;
-            }
-            if (!userImage.src || userImage.style.display === 'none') {
-                alert("먼저 사진을 선택해주세요.");
-                return;
-            }
+// [개선 및 완성된] 사진 분석 함수
+async function analyzePhoto() {
+    if (!modelsLoaded) {
+        alert("분석 모델이 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.");
+        return;
+    }
+    if (!userImage.src || userImage.style.display === 'none') {
+        alert("먼저 사진을 선택해주세요.");
+        return;
+    }
 
-            loader.style.display = 'block';
-            analyzeBtn.style.display = 'none';
-            
-            const canvas = document.getElementById('overlay-canvas');
-            const ctx = canvas.getContext('2d');
+    loader.style.display = 'block';
+    analyzeBtn.style.display = 'none';
+    
+    const canvas = document.getElementById('overlay-canvas');
+    const ctx = canvas.getContext('2d');
 
-            try {
-                const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks();
+    try {
+        const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks();
 
-                if (!detection) {
-                    loader.style.display = 'none';
-                    analyzeBtn.style.display = 'block';
-                    alert("얼굴을 인식할 수 없습니다. 더 선명하고 정면을 바라보는 사진을 사용해주세요.");
-                    return;
-                }
-                
-                const imageRect = userImage.getBoundingClientRect();
-                const containerRect = guideContainer.getBoundingClientRect();
-                
-                canvas.style.top = `${imageRect.top - containerRect.top}px`;
-                canvas.style.left = `${imageRect.left - containerRect.left}px`;
-                canvas.style.width = `${imageRect.width}px`;
-                canvas.style.height = `${imageRect.height}px`;
-                canvas.width = imageRect.width;
-                canvas.height = imageRect.height;
-                
-                const displaySize = { width: imageRect.width, height: imageRect.height };
-                const resizedDetections = faceapi.resizeResults(detection, displaySize);
-                
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-                
-                const landmarks = detection.landmarks;
-                const jaw = landmarks.getJawOutline();
-                const leftEye = landmarks.getLeftEye();
-                const rightEye = landmarks.getRightEye();
-                const nose = landmarks.getNose();
-
-                const eyebrowTop = (landmarks.getLeftEyeBrow()[2].y + landmarks.getRightEyeBrow()[2].y) / 2;
-                const noseTip = nose[3].y;
-                const chin = jaw[8].y;
-                const upperFace = eyebrowTop - (jaw[0].y + jaw[16].y) / 2;
-                const lowerFace = chin - noseTip;
-                const faceTypeAB = (upperFace > lowerFace * 1.1) ? 'A' : 'B';
-
-                const faceWidth = jaw[16].x - jaw[0].x;
-                const faceHeight = jaw[8].y - (jaw[0].y + jaw[16].y) / 2;
-                const faceRatio = faceWidth / faceHeight;
-                const faceTypeCD = (faceRatio > 0.8) ? 'C' : 'D';
-
-                const leftEyeWidth = leftEye[3].x - leftEye[0].x;
-                const leftEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2;
-                const eyeRatio = leftEyeWidth / leftEyeHeight;
-                const faceTypeEF = (eyeRatio < 3.0) ? 'E' : 'F';
-
-                const faceCenterX = landmarks.getNose()[0].x;
-                const midEyesX = (landmarks.getLeftEye()[0].x + landmarks.getRightEye()[3].x) / 2;
-                const eyeSpreadRatio = Math.abs(midEyesX - faceCenterX) / faceWidth;
-                const faceTypeInnerOuter = (eyeSpreadRatio < 0.045) ? 'inner' : 'outer';
-                
-                const photoResult = {
-                    faceShape: faceTypeAB,
-                    jawLine: faceTypeCD,
-                    eyeShape: faceTypeEF,
-                    featurePosition: faceTypeInnerOuter
-                };
-
-                displayResults(photoResult, true); // fromPhoto 플래그를 true로 전달
-                showPage('result-page');
-
-            } catch (error) {
-                console.error("사진 분석 중 오류 발생:", error);
-                alert("사진을 분석하는 중에 오류가 발생했습니다. 다른 사진으로 시도해보거나, 설문으로 진단하는 방법을 이용해주세요.");
-            } finally {
-                loader.style.display = 'none';
-                analyzeBtn.style.display = 'block';
-            }
+        if (!detection) {
+            // [기존 로직 복원] 얼굴 인식 실패 시 UI 처리
+            loader.style.display = 'none';
+            analyzeBtn.style.display = 'block';
+            alert("얼굴을 인식할 수 없습니다. 더 선명하고 정면을 바라보는 사진을 사용해주세요.");
+            return;
         }
+        
+        // [기존 로직 복원] 캔버스 크기 및 위치 조정, 랜드마크 그리기
+        const imageRect = userImage.getBoundingClientRect();
+        const containerRect = guideContainer.getBoundingClientRect();
+        
+        canvas.style.top = `${imageRect.top - containerRect.top}px`;
+        canvas.style.left = `${imageRect.left - containerRect.left}px`;
+        canvas.style.width = `${imageRect.width}px`;
+        canvas.style.height = `${imageRect.height}px`;
+        canvas.width = imageRect.width;
+        canvas.height = imageRect.height;
+        
+        const displaySize = { width: imageRect.width, height: imageRect.height };
+        const resizedDetections = faceapi.resizeResults(detection, displaySize);
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+        
+        // --- 개선된 분석 로직 시작 ---
+        const landmarks = detection.landmarks;
+        const jaw = landmarks.getJawOutline();
+        
+        // [개선 1] 턱선 각도 직접 계산 (C/D 타입 분석)
+        const p1 = jaw[2];
+        const p2 = jaw[4];
+        const p3 = jaw[8];
+        const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
+        const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
+        const dotProduct = v1.x * v2.x + v1.y * v2.y;
+        const magnitude1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+        const magnitude2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+        const jawAngle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
+        const jawAngleThreshold = 145;
+        const faceTypeCD = (jawAngle < jawAngleThreshold) ? 'D' : 'C';
+
+        // [개선 2] 얼굴 상하 비율 + 좌우 넓이 동시 고려 (A/B 타입 분석)
+        const eyebrowTop = (landmarks.getLeftEyeBrow()[2].y + landmarks.getRightEyeBrow()[2].y) / 2;
+        const noseTip = landmarks.getNose()[3].y;
+        const chin = jaw[8].y;
+        const upperFaceHeight = eyebrowTop - jaw[0].y; 
+        const lowerFaceHeight = chin - noseTip;
+        const verticalRatio = upperFaceHeight / lowerFaceHeight;
+        const foreheadWidth = landmarks.getRightEyeBrow()[4].x - landmarks.getLeftEyeBrow()[0].x;
+        const jawWidth = jaw[14].x - jaw[2].x;
+        const horizontalRatio = foreheadWidth / jawWidth;
+        const verticalRatioThreshold = 1.0;
+        const horizontalRatioThreshold = 1.0;
+        let score = 0;
+        if (verticalRatio > verticalRatioThreshold) score++;
+        if (horizontalRatio > horizontalRatioThreshold) score++;
+        const faceTypeAB = (score >= 1) ? 'A' : 'B';
+
+        // 최종 결과 조합
+        const photoResult = {
+            faceShape: faceTypeAB,
+            jawLine: faceTypeCD,
+            eyeShape: (landmarks.getLeftEye()[3].x - landmarks.getLeftEye()[0].x) / ((landmarks.getLeftEye()[4].y + landmarks.getLeftEye()[5].y) / 2 - (landmarks.getLeftEye()[1].y + landmarks.getLeftEye()[2].y) / 2) < 3.0 ? 'E' : 'F',
+            featurePosition: Math.abs(((landmarks.getLeftEye()[0].x + landmarks.getRightEye()[3].x) / 2) - landmarks.getNose()[0].x) / (jaw[16].x - jaw[0].x) < 0.045 ? 'inner' : 'outer'
+        };
+
+        displayResults(photoResult, true);
+        showPage('result-page');
+
+    } catch (error) {
+        // [기존 로직 복원] 에러 발생 시 처리
+        console.error("사진 분석 중 오류 발생:", error);
+        alert("사진을 분석하는 중에 오류가 발생했습니다. 다른 사진으로 시도해보거나, 설문으로 진단하는 방법을 이용해주세요.");
+    } finally {
+        // [기존 로직 복원] 모든 작업 후 UI 처리
+        loader.style.display = 'none';
+        analyzeBtn.style.display = 'block';
+    }
+}
 
         // 설문 분석 함수
         function analyzeQuiz() {
