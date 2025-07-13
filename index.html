@@ -1,41 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>眉완성: 내 인생 눈썹 찾기</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #6a5acd; /* SlateBlue */
+            --secondary-color: #f0e6ff;
+            --text-color: #333;
+            --bg-color: #f8f9fa;
+            --container-bg: #ffffff;
+            --border-radius: 16px;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            box-sizing: border-box;
+            color: var(--text-color);
+        }
+        .main-container {
+            width: 100%;
+            max-width: 500px;
+            background-color: var(--container-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 25px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        h1, h2, h3, h4 {
+            margin: 0 0 15px;
+            color: var(--primary-color);
+        }
+        h1 { font-size: 2rem; }
+        h2 { font-size: 1.6rem; }
+        h4 { font-size: 1.1rem; margin-top: 20px;}
+        p { line-height: 1.7; margin: 0 0 20px; }
+        .btn {
+            display: block; width: 100%; padding: 15px; margin: 10px 0;
+            border: none; border-radius: 12px; background-color: var(--primary-color);
+            color: white; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn:hover { background-color: #5a4ab9; }
+        .btn:active { transform: scale(0.98); }
+        .btn.secondary { background-color: #e9ecef; color: var(--text-color); }
+        .btn.secondary:hover { background-color: #d3d9df; }
+        .page { display: none; }
+        .page.active { display: block; }
+        #guide-container {
+            width: 100%; aspect-ratio: 3 / 4; background-color: #e9ecef;
+            border: 2px dashed #ced4da; border-radius: 12px;
+            position: relative; overflow: hidden; user-select: none; margin: 20px 0;
+        }
+        #user-image, #overlay-canvas, #guideline-svg {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 100%; max-height: 100%;
+            height: auto; width: 80%;
+        }
+        #user-image { cursor: grab; }
+        #user-image:active { cursor: grabbing; }
+        #overlay-canvas, #guideline-svg { pointer-events: none; }
+        #guideline-svg .draggable-line {
+            pointer-events: all;
+            cursor: ew-resize;
+            stroke-width: 6px;
+            stroke: rgba(0,0,0,0);
+        }
+        .sliders {
+            margin-top: 20px; padding: 20px;
+            background-color: #f8f9fa; border-radius: 8px;
+        }
+        .slider-group {
+            display: flex; align-items: center;
+            gap: 15px; margin-bottom: 15px;
+        }
+        .slider-group label { font-size: 14px; width: 100px; text-align: left;}
+        input[type="range"] { flex-grow: 1; }
+        .description-text {
+            font-size: 0.8em; color: #888; text-align: left;
+            padding-left: 10px; border-left: 3px solid #e0e0e0;
+        }
+        .question { margin-bottom: 30px; text-align: left; }
+        .question p { font-weight: 500; margin-bottom: 15px; }
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        .result-card {
+            background-color: var(--secondary-color); border-radius: 12px;
+            padding: 20px; margin-bottom: 15px; text-align: left;
+        }
+        .result-card h3 { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 15px;}
+        .result-card ul { padding-left: 20px; margin: 0; }
+        .result-card li { margin-bottom: 10px; }
+        #loader {
+            border: 8px solid #f3f3f3; border-radius: 50%;
+            border-top: 8px solid var(--primary-color);
+            width: 60px; height: 60px;
+            animation: spin 1s linear infinite; margin: 30px auto; display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+
+        <div id="start-page" class="page active">
+            <h1>眉완성</h1>
+            <p><strong>내 얼굴에 딱 맞는 인생 눈썹을 찾아보세요!</strong><br>두 가지 방법 중 하나를 선택해 진단을 시작할 수 있습니다.</p>
+            <button class="btn" onclick="showPage('photo-page')">📸 사진으로 분석하기</button>
+            <button class="btn" onclick="showPage('quiz-page')">✍️ 설문으로 진단하기</button>
+            <p style="font-size: 0.8em; color: #888; margin-top: 20px;">
+                사진은 서버에 저장되지 않으며, 분석은 모두 사용자의 기기에서만 이루어집니다.
+            </p>
+        </div>
+
+        <div id="photo-page" class="page">
+            <h2>사진으로 분석하기</h2>
+            <p>정면을 바라보는 선명한 사진을 올리고<br>가이드라인에 맞춰 얼굴을 조정해주세요.</p>
+            
+            <label for="file-input" class="btn secondary">🖼️ 사진 선택</label>
+            <input type="file" id="file-input" accept="image/*" style="display:none;">
+
+            <div id="guide-container">
+                <svg id="guideline-svg" viewbox="0 0 300 400" preserveAspectRatio="xMidYMid meet">
+                    <ellipse id="oval-guide" cx="150" cy="200" rx="100" ry="130" stroke="rgba(0,0,0,0.5)" stroke-width="2" stroke-dasharray="5,5" fill="none" />
+                    <line id="red-line" x1="50" y1="200" x2="250" y2="200" stroke="red" stroke-width="1.5" />
+                    <line id="blue-line" x1="150" y1="70" x2="150" y2="330" stroke="blue" stroke-width="1.5" />
+                    <line class="green-line" id="green-line-1" x1="100" y1="70" x2="100" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" id="green-line-2" x1="150" y1="70" x2="150" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" id="green-line-3" x1="200" y1="70" x2="200" y2="330" stroke="green" stroke-width="1" />
+                    <line id="draggable-line-visual" x1="170" y1="70" x2="170" y2="330" stroke="skyblue" stroke-width="2" />
+                    <line class="draggable-line" id="draggable-line-handle" x1="170" y1="70" x2="170" y2="330" />
+                </svg>
+                <img id="user-image" src="" alt="User's face" style="display:none;">
+                <canvas id="overlay-canvas"></canvas>
+            </div>
+
+            <div id="photo-controls" style="display:none;">
+                <div class="sliders">
+                    <p class="description-text"><strong>사진 조절</strong></p>
+                    <div class="slider-group">
+                        <label for="size-slider">사진 크기</label>
+                        <input type="range" id="size-slider" min="10" max="250" value="80">
+                    </div>
+                    <div class="slider-group">
+                        <label for="opacity-slider">사진 투명도</label>
+                        <input type="range" id="opacity-slider" min="0" max="1" step="0.05" value="0.7">
+                    </div>
+                </div>
+                <div class="sliders">
+                     <p class="description-text"><strong>가이드라인 조절</strong></p>
+                    <div class="slider-group">
+                        <label for="guideline-size-slider">전체 크기</label>
+                        <input type="range" id="guideline-size-slider" min="50" max="150" value="100">
+                    </div>
+                     <p class="description-text" style="font-size:0.75em; margin-top: 5px;">
+                        가이드라인을 조절하여 얼굴 비율을 직접 확인해보세요.
+                    </p>
+                </div>
+            </div>
+            
+            <p class="description-text" style="margin-top:15px; font-size: 0.9em;">
+                <strong>동그란 얼굴:</strong> 얼굴의 가로와 세로 길이가 1:1.1 정도로 비슷<br>
+                <strong>타원형 얼굴:</strong> 가로보다 세로 길이가 1:1.4 이상으로 훨씬 김
+            </p>
+            
+            <div id="loader"></div>
+            <button class="btn" id="analyze-btn" onclick="analyzePhoto()" style="display:none;">결과 분석하기</button>
+            <button class="btn secondary" onclick="showPage('start-page')">뒤로 가기</button>
+        </div>
+
+        <div id="quiz-page" class="page">
+            <h2>설문으로 진단하기</h2>
+            <p>아래 질문에 답하여<br>자신에게 꼭 맞는 눈썹 스타일을 찾아보세요.</p>
+            <form id="quiz-form">
+                <div class="question">
+                    <p>1. 내 얼굴의 특징은 어디에 가깝나요?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q1" value="A"> 얼굴이 길거나, 눈과 눈썹 사이가 멀다.</label>
+                        <label><input type="radio" name="q1" value="B"> 얼굴이 짧거나, 눈과 눈썹 사이가 좁다.</label>
+                    </div>
+                </div>
+                <div class="question">
+                    <p>2. 나의 전체적인 인상이나 얼굴 라인은?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q2" value="C"> 얼굴선이 둥글고, 청순하고 부드러운 인상이다.</label>
+                        <label><input type="radio" name="q2" value="D"> 얼굴선이 각지고, 세련되고 또렷한 인상이다.</label>
+                    </div>
+                </div>
+                <div class="question">
+                    <p>3. 내 눈 모양은 어떤가요?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q3" value="E"> 눈이 전체적으로 동그란 편이다.</label>
+                        <label><input type="radio" name="q3" value="F"> 눈이 가로로 긴 편이다.</label>
+                    </div>
+                </div>
+                <div class="question">
+                    <p>4. 내 이목구비는 얼굴 중앙에 모여있는 편인가요?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q4" value="A"> 이목구비가 중앙에 모여있고, 눈 사이가 가깝다 (내심안).</label>
+                        <label><input type="radio" name="q4" value="B"> 이목구비가 넓게 퍼져있고, 눈 사이가 멀다 (외심안).</label>
+                    </div>
+                </div>
+                <div class="question">
+                    <p>5. 내 얼굴의 가로/세로 비율은 어떤가요?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q5" value="C"> 가로 대비 세로 길이가 짧은 동그란 얼굴형이다.</label>
+                        <label><input type="radio" name="q5" value="D"> 가로 대비 세로 길이가 긴 타원형/긴 얼굴형이다.</label>
+                    </div>
+                </div>
+                <div class="question">
+                    <p>6. 나의 미간 너비와 추구하는 인상은?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q6" value="E"> 미간이 좁은 편이며, 부드러운 인상을 원한다.</label>
+                        <label><input type="radio" name="q6" value="F"> 미간이 넓은 편이며, 또렷한 인상을 원한다.</label>
+                    </div>
+                </div>
+                <button type="button" class="btn" onclick="analyzeQuiz()">결과 확인하기</button>
+                <button type="button" class="btn secondary" onclick="showPage('start-page')">뒤로 가기</button>
+            </form>
+        </div>
+
+        <div id="result-page" class="page">
+            <h2>진단 결과 🧐</h2>
+            <p>당신에게 어울리는 최고의 눈썹 스타일을 추천합니다!</p>
+            <div id="result-content"></div>
+            <button class="btn" onclick="showPage('start-page')">다시 하기</button>
+        </div>
+        
+    </div>
+
 <script>
     // 전역 변수 및 설정
     const pages = document.querySelectorAll('.page');
     const loader = document.getElementById('loader');
-    const analyzeBtn = document.getElementById('analyze-btn');
     let modelsLoaded = false;
 
-    // [수정 완료] 페이지 전환 및 초기화 함수
     function showPage(pageId) {
         pages.forEach(page => page.classList.remove('active'));
-        document.getElementById(pageId).classList.add('active');
-
+        const targetPage = document.getElementById(pageId);
+        if (targetPage) {
+            targetPage.classList.add('active');
+        }
         if (pageId === 'start-page') {
             const fileInput = document.getElementById('file-input');
             const userImage = document.getElementById('user-image');
-            const slidersContainer = document.getElementById('sliders-container');
+            const photoControls = document.getElementById('photo-controls');
             const analyzeBtn = document.getElementById('analyze-btn');
             const canvas = document.getElementById('overlay-canvas');
-            const ctx = canvas.getContext('2d');
-
-            fileInput.value = '';
-            userImage.src = '';
-            userImage.style.display = 'none';
-            slidersContainer.style.display = 'none';
-            analyzeBtn.style.display = 'none';
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if(fileInput) fileInput.value = '';
+            if(userImage) { userImage.src = ''; userImage.style.display = 'none'; }
+            if(photoControls) photoControls.style.display = 'none';
+            if(analyzeBtn) analyzeBtn.style.display = 'none';
+            if(canvas) { canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); }
         }
     }
 
-    // 모델 로드 함수
     async function loadModels() {
         const MODEL_URL = './models';
         try {
             console.log("모델 로딩을 시작합니다...");
-            await Promise.all([
-                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
-            ]);
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
             modelsLoaded = true;
             console.log("모델 로딩 완료! 이제 사진 분석을 할 수 있습니다.");
         } catch (error) {
@@ -45,74 +281,145 @@
     }
     loadModels();
 
-    // 사진 관련 UI 스크립트
     const fileInput = document.getElementById('file-input');
     const userImage = document.getElementById('user-image');
-    const slidersContainer = document.getElementById('sliders-container');
+    const photoControls = document.getElementById('photo-controls');
+    const analyzeBtn = document.getElementById('analyze-btn');
     const guideContainer = document.getElementById('guide-container');
 
-    fileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        const canvas = document.getElementById('overlay-canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            userImage.src = e.target.result;
-            userImage.style.display = 'block';
-            userImage.onload = () => {
-                slidersContainer.style.display = 'block';
+    if (fileInput) {
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('overlay-canvas').getContext('2d').clearRect(0,0,300,400);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                userImage.src = e.target.result;
+                userImage.style.display = 'block';
+                photoControls.style.display = 'block';
                 analyzeBtn.style.display = 'block';
                 document.getElementById('size-slider').value = 80;
-                document.getElementById('opacity-slider').value = 0.7;
                 userImage.style.width = '80%';
+                document.getElementById('opacity-slider').value = 0.7;
                 userImage.style.opacity = '0.7';
-                userImage.style.top = '50%';
-                userImage.style.left = '50%';
+                document.getElementById('guideline-size-slider').value = 100;
+                updateGuidelineSize(100);
             };
-        };
-        reader.readAsDataURL(file);
-    });
-
-    // 드래그 기능
-    let isImageDragging = false;
-    let startX, startY, initialLeft, initialTop;
-    userImage.addEventListener('mousedown', e => {
-        if (!userImage.src) return;
-        e.preventDefault();
-        isImageDragging = true;
-        userImage.style.cursor = 'grabbing';
-        startX = e.clientX;
-        startY = e.clientY;
-        initialLeft = userImage.offsetLeft;
-        initialTop = userImage.offsetTop;
-        window.addEventListener('mousemove', dragImage);
-        window.addEventListener('mouseup', stopDragImage);
-    });
-    function dragImage(e) {
-        if (!isImageDragging) return;
-        userImage.style.left = `${initialLeft + (e.clientX - startX)}px`;
-        userImage.style.top = `${initialTop + (e.clientY - startY)}px`;
-    }
-    function stopDragImage() {
-        isImageDragging = false;
-        userImage.style.cursor = 'grab';
-        window.removeEventListener('mousemove', dragImage);
-        window.removeEventListener('mouseup', stopDragImage);
+            reader.readAsDataURL(file);
+        });
     }
 
-    // 슬라이더 기능
-    document.getElementById('size-slider').addEventListener('input', (e) => {
-        userImage.style.width = `${e.target.value}%`;
-    });
-    document.getElementById('opacity-slider').addEventListener('input', (e) => {
-        userImage.style.opacity = e.target.value;
+    if (userImage) {
+        let isImageDragging = false;
+        let startX, startY, initialLeft, initialTop;
+        userImage.addEventListener('mousedown', e => {
+            if (!userImage.src) return;
+            e.preventDefault();
+            isImageDragging = true;
+            userImage.style.cursor = 'grabbing';
+            startX = e.clientX;
+            startY = e.clientY;
+            initialLeft = userImage.offsetLeft;
+            initialTop = userImage.offsetTop;
+            window.addEventListener('mousemove', dragImage);
+            window.addEventListener('mouseup', stopDragImage);
+        });
+        function dragImage(e) {
+            if (!isImageDragging) return;
+            userImage.style.left = `${initialLeft + (e.clientX - startX)}px`;
+            userImage.style.top = `${initialTop + (e.clientY - startY)}px`;
+        }
+        function stopDragImage() {
+            isImageDragging = false;
+            userImage.style.cursor = 'grab';
+            window.removeEventListener('mousemove', dragImage);
+            window.removeEventListener('mouseup', stopDragImage);
+        }
+    }
+
+    const sizeSlider = document.getElementById('size-slider');
+    const opacitySlider = document.getElementById('opacity-slider');
+    if (sizeSlider) {
+        sizeSlider.addEventListener('input', (e) => { if(userImage) userImage.style.width = `${e.target.value}%`; });
+    }
+    if (opacitySlider) {
+        opacitySlider.addEventListener('input', (e) => { if(userImage) userImage.style.opacity = e.target.value; });
+    }
+
+    const guidelineSVG = document.getElementById('guideline-svg');
+    const ovalGuide = document.getElementById('oval-guide');
+    const redLine = document.getElementById('red-line');
+    const blueLine = document.getElementById('blue-line');
+    const greenLines = guidelineSVG.querySelectorAll('.green-line');
+    const draggableLineVisual = document.getElementById('draggable-line-visual');
+    const draggableLineHandle = document.getElementById('draggable-line-handle');
+    const guidelineSizeSlider = document.getElementById('guideline-size-slider');
+    const IDEAL_ASPECT_RATIO = 1.3;
+    
+    function updateGuidelineSize(sizePercent) {
+        const svgWidth = 300;
+        const svgHeight = 400;
+        const baseRx = svgWidth / 3;
+        const rx = baseRx * (sizePercent / 100);
+        const ry = rx * IDEAL_ASPECT_RATIO;
+
+        ovalGuide.setAttribute('rx', rx);
+        ovalGuide.setAttribute('ry', ry);
+        redLine.setAttribute('x1', 150 - rx);
+        redLine.setAttribute('x2', 150 + rx);
+        blueLine.setAttribute('y1', 200 - ry);
+        blueLine.setAttribute('y2', 200 + ry);
+        greenLines[0].setAttribute('x1', 150 - rx / 2);
+        greenLines[0].setAttribute('x2', 150 - rx / 2);
+        greenLines[0].setAttribute('y1', 200 - ry);
+        greenLines[0].setAttribute('y2', 200 + ry);
+        greenLines[1].setAttribute('x1', 150);
+        greenLines[1].setAttribute('x2', 150);
+        greenLines[1].setAttribute('y1', 200 - ry);
+        greenLines[1].setAttribute('y2', 200 + ry);
+        greenLines[2].setAttribute('x1', 150 + rx / 2);
+        greenLines[2].setAttribute('x2', 150 + rx / 2);
+        greenLines[2].setAttribute('y1', 200 - ry);
+        greenLines[2].setAttribute('y2', 200 + ry);
+        
+        draggableLineVisual.setAttribute('y1', 200 - ry);
+        draggableLineVisual.setAttribute('y2', 200 + ry);
+        draggableLineHandle.setAttribute('y1', 200 - ry);
+        draggableLineHandle.setAttribute('y2', 200 + ry);
+    }
+
+    guidelineSizeSlider.addEventListener('input', (e) => {
+        updateGuidelineSize(e.target.value);
     });
 
-    // [수정 완료] 사진 분석 함수
+    let isLineDragging = false;
+    draggableLineHandle.addEventListener('mousedown', (e) => {
+        isLineDragging = true;
+        guidelineSVG.style.pointerEvents = 'all';
+    });
+    guidelineSVG.addEventListener('mousemove', (e) => {
+        if (!isLineDragging) return;
+        const CTM = guidelineSVG.getScreenCTM().inverse();
+        const pt = guidelineSVG.createSVGPoint();
+        pt.x = e.clientX;
+        pt.y = e.clientY;
+        const svgP = pt.matrixTransform(CTM);
+        draggableLineVisual.setAttribute('x1', svgP.x);
+        draggableLineVisual.setAttribute('x2', svgP.x);
+        draggableLineHandle.setAttribute('x1', svgP.x);
+        draggableLineHandle.setAttribute('x2', svgP.x);
+    });
+    window.addEventListener('mouseup', () => {
+        if(isLineDragging) {
+            isLineDragging = false;
+            guidelineSVG.style.pointerEvents = 'none';
+        }
+    });
+    
+    updateGuidelineSize(100);
+
     async function analyzePhoto() {
-        if (!modelsLoaded) { alert("분석 모델이 아직 로딩 중입니다. 잠시 후 다시 시도해주세요."); return; }
+        if (!modelsLoaded) { alert("분석 모델이 아직 로딩 중입니다."); return; }
         if (!userImage.src || userImage.style.display === 'none') { alert("먼저 사진을 선택해주세요."); return; }
         loader.style.display = 'block';
         analyzeBtn.style.display = 'none';
@@ -155,6 +462,7 @@
             const normalizedDistance = eyeToEyebrowDistance / leftEyeHeight;
             if (normalizedDistance > 1.0) score++;
             const step1 = (score >= 1) ? 'A' : 'B';
+            
             const p1 = jaw[2], p2 = jaw[4], p3 = jaw[8];
             const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
             const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
@@ -162,13 +470,18 @@
             const magnitude1 = Math.sqrt(v1.x**2 + v1.y**2), magnitude2 = Math.sqrt(v2.x**2 + v2.y**2);
             const jawAngle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
             const step2 = (jawAngle < 145) ? 'D' : 'C';
+            
             const leftEyeWidth = leftEye[3].x - leftEye[0].x;
             const step3 = (leftEyeWidth / leftEyeHeight < 3.0) ? 'E' : 'F';
+            
             const midEyesX = (leftEye[0].x + rightEye[3].x) / 2;
             const eyeSpreadRatio = Math.abs(midEyesX - landmarks.getNose()[0].x) / faceWidth;
             const step4 = (eyeSpreadRatio < 0.03) ? 'A' : 'B';
+            
             const step5 = (aspectRatio < 1.2) ? 'C' : 'D';
+            
             const step6 = (step4 === 'A' || step2 === 'C') ? 'E' : 'F';
+            
             const analysisResult = { step1, step2, step3, step4, step5, step6 };
             displayResults(analysisResult);
             showPage('result-page');
@@ -181,7 +494,6 @@
         }
     }
 
-    // [수정 완료] 설문 분석 함수
     function analyzeQuiz() {
         const form = document.getElementById('quiz-form');
         const analysisResult = {
@@ -200,9 +512,9 @@
         showPage('result-page');
     }
 
-    // [전면 수정] 최종 결과 표시 함수
     function displayResults(analysis) {
         const content = document.getElementById('result-content');
+        if (!content) return;
         const resultTexts = {
             step1: { A: "도톰한", B: "얇은" },
             step2: { C: "산이 없는 부드러운 곡선 형태", D: "산이 있는 직선적이고 각진 형태" },
@@ -242,3 +554,5 @@
         content.innerHTML = resultHTML;
     }
 </script>
+</body>
+</html>
