@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>眉완성: 내 인생 눈썹 찾기</title>
-    
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2559728692566987"
-     crossorigin="anonymous"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>
         :root {
@@ -156,10 +152,8 @@
                     <ellipse id="oval-guide" cx="150" cy="200" rx="100" ry="130" stroke="rgba(0,0,0,0.5)" stroke-width="2" stroke-dasharray="5,5" fill="none" />
                     <line id="red-line" x1="50" y1="200" x2="250" y2="200" stroke="red" stroke-width="1.5" />
                     <line id="blue-line" x1="150" y1="70" x2="150" y2="330" stroke="blue" stroke-width="1.5" />
-                    
                     <line class="green-line" x1="116.67" y1="70" x2="116.67" y2="330" stroke="green" stroke-width="1" />
                     <line class="green-line" x1="183.33" y1="70" x2="183.33" y2="330" stroke="green" stroke-width="1" />
-                    
                     <line id="draggable-line-visual" x1="50" y1="220" x2="250" y2="220" stroke="skyblue" stroke-width="2" />
                     <line class="draggable-line" id="draggable-line-handle" x1="50" y1="220" x2="250" y2="220" />
                 </svg>
@@ -359,7 +353,6 @@
         blueLine.setAttribute('y1', 200 - ry);
         blueLine.setAttribute('y2', 200 + ry);
         
-        // [수정] 2개의 선으로 3등분 하도록 로직 변경
         const sectionWidth = (rx * 2) / 3;
         const startX = 150 - rx;
         greenLines[0].setAttribute('x1', startX + sectionWidth);
@@ -388,7 +381,6 @@
     let isImageDragging = false;
     let isLineDragging = false;
     let startX_drag, startY_drag, initialLeft, initialTop;
-
     if (guideContainer) {
         guideContainer.addEventListener('mousedown', e => {
             if (e.target.id === 'draggable-line-handle') {
@@ -406,7 +398,6 @@
             initialTop = userImage.offsetTop;
         });
     }
-
     window.addEventListener('mousemove', (e) => {
         if (isLineDragging && guidelineSVG) {
             const CTM = guidelineSVG.getScreenCTM().inverse();
@@ -425,7 +416,6 @@
             userImage.style.top = `${initialTop + (e.clientY - startY_drag)}px`;
         }
     });
-
     window.addEventListener('mouseup', () => {
         if(isLineDragging) {
             isLineDragging = false;
@@ -534,60 +524,73 @@
     function displayResults(analysis, fromPhoto = false) {
         const content = document.getElementById('result-content');
         if (!content) return;
-        const resultTexts = {
-            step1: { A: "도톰한", B: "얇은" },
-            step2: { C: "산이 없는 부드러운 곡선 형태", D: "산이 있는 직선적이고 각진 형태" },
-            step3: { E: "아래쪽을 아치처럼 파주는 곡선형", F: "아래쪽이 완만한 일자형" },
-            step4: { A: "산이 길고 꼬리가 짧은 형태", B: "산이 짧고 꼬리가 긴 형태" },
-            step5: { C: "얼굴이 덜 동그래 보이도록 조금 길게", D: "얼굴의 세로 길이를 보완하도록 조금 짧게" },
-            step6: { E: "옅고 부드럽게 표현하는", F: "또렷하고 결을 살려 표현하는" }
+
+        // 1. 최종 유형(Type) 결정 로직
+        let finalType;
+        if (analysis.step2 === 'D' && analysis.step1 === 'A') finalType = 'A';
+        else if (analysis.step2 === 'D' && analysis.step1 === 'B') finalType = 'B';
+        else if (analysis.step2 === 'C' && analysis.step1 === 'A') finalType = 'C';
+        else finalType = 'D';
+
+        // 2. 각 타입별 정보 (타이틀, 설명, 예시 연예인, 이미지 경로)
+        const typeInfo = {
+            'A': {
+                title: "Type A : 세련된 파워 셀럽형",
+                description: "또렷한 인상을 주는 각진 모양과 풍성하고 도톰한 눈썹의 조합입니다. 자신감 있고 카리스마 넘치는 이미지를 연출하기에 좋습니다. 눈썹의 전체적인 길이는 아래 상세 가이드에서 당신의 얼굴 비율에 맞게 조절하여, 전체적인 인상의 완성도를 높일 수 있습니다.",
+                celebrity: "김혜수, 한소희",
+                image: "https://image.isplus.com/data/isp/image/2025/03/20/isp20250320000163.800x.0.jpg"
+            },
+            'B': {
+                title: "Type B : 시크한 도시 모델형",
+                description: "날카롭고 세련된 느낌의 각진 모양과 얇고 정교한 눈썹의 조합입니다. 시크하고 도회적인 분위기를 연출하는 데 효과적입니다. 눈썹의 전체적인 길이는 아래 상세 가이드에서 당신의 얼굴 비율에 맞게 조절하여, 전체적인 인상의 완성도를 높일 수 있습니다.",
+                celebrity: "김서형, 아이유",
+                image: "https://www.elle.co.kr/resources_old/online/org_online_image/el/a15eacb9-d825-4655-9264-24e5b93b58c9.jpg"
+            },
+            'C': {
+                title: "Type C : 부드러운 첫사랑형",
+                description: "선하고 부드러운 인상을 주는 둥근 모양과 자연스럽고 도톰한 눈썹의 조합입니다. 청순하고 어려 보이는 이미지를 만드는 데 가장 이상적입니다. 눈썹의 전체적인 길이는 아래 상세 가이드에서 당신의 얼굴 비율에 맞게 조절하여, 전체적인 인상의 완성도를 높일 수 있습니다.",
+                celebrity: "제니(블랙핑크), 임윤아",
+                image: "https://img3.daumcdn.net/thumb/R658x0.q70/?fname=https://t1.daumcdn.net/news/202504/18/inews24/20250418141440222zwyv.jpg"
+            },
+            'D': {
+                title: "Type D : 단아한 클래식형",
+                description: "부드러운 곡선 모양과 깔끔하고 얇은 눈썹의 조합입니다. 단아하고 클래식한 분위기를 연출하며, 가장 실패 확률이 적은 스타일입니다. 눈썹의 전체적인 길이는 아래 상세 가이드에서 당신의 얼굴 비율에 맞게 조절하여, 전체적인 인상의 완성도를 높일 수 있습니다.",
+                celebrity: "김고은, 송혜교",
+                image: "https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1HC3K5.img?w=650&h=865&m=6&x=172&y=224&s=289&d=289"
+            }
         };
-        const photoBasisTexts = {
-            step1: { A: "얼굴이 길거나 눈과 눈썹 사이가 먼 편", B: "얼굴이 짧거나 눈과 눈썹 사이가 좁은 편" },
-            step2: { C: "턱선이 145도 이상으로 부드러운 편", D: "턱선이 145도 미만으로 각진 편" },
-            step3: { E: "눈의 세로 비율이 높아 동그란 편", F: "눈의 가로 비율이 높아 긴 편" },
-            step4: { A: "이목구비가 중앙에 모여있는 편", B: "이목구비가 바깥으로 퍼져있는 편" },
-            step5: { C: "얼굴 세로/가로 비율이 1.2 미만으로 동그란 편", D: "얼굴 세로/가로 비율이 1.2 이상으로 긴 편" },
-            step6: { E: "부드러운 인상(내심안 또는 둥근 턱)", F: "또렷한 인상(외심안 또는 각진 턱)" }
+
+        const currentType = typeInfo[finalType];
+        
+        // 상세 가이드 텍스트
+        const detailTexts = {
+            shape: analysis.step2 === 'D' ? '산과 각을 살린' : '부드러운 곡선',
+            thickness: analysis.step1 === 'A' ? '도톰한' : '얇은',
+            length: analysis.step5 === 'C' ? '조금 길게 그려' : '조금 짧게 그려',
+            detail: `눈썹 ${analysis.step4 === 'A' ? '산을 길게, 꼬리를 짧게' : '산을 짧게, 꼬리를 길게'}, ${analysis.step6 === 'E' ? '앞머리는 옅게 표현' : '앞머리 결을 살려 표현'}`
         };
-        let title, intro, outro;
-        if (analysis.step2 === 'C') {
-            title = `당신의 매력을 극대화할 "<strong>부드럽고 청순한 동안 눈썹</strong>"`;
-            intro = "축하드립니다! 당신은 부드럽고 청순하며 어려 보이는 동안 인상을 가장 잘 어필할 수 있는 타입입니다. 당신의 매력을 더욱 돋보이게 할 눈썹은 과도한 각 없이 부드러운 곡선 형태를 유지하며, 전체적으로 완만하고 자연스러운 흐름을 가지는 것이 핵심입니다.";
-            outro = "이 모든 요소를 종합하여 당신의 얼굴에 찰떡같이 어울리는 눈썹을 완성해 보세요. 자연스러운 아름다움으로 당신의 청순하고 귀여운 매력을 한껏 뽐낼 수 있을 것입니다!";
-        } else {
-            title = `당신의 품격을 높일 "<strong>세련되고 뚜렷한 성숙 눈썹</strong>"`;
-            intro = "축하드립니다! 당신은 세련되고 뚜렷하며 고급스러운 성숙한 인상을 가장 잘 나타낼 수 있는 타입입니다. 당신의 매력을 더욱 강조할 눈썹은 직선적인 요소를 활용하여 또렷한 인상을 부여하고, 적절한 산을 통해 입체감과 시원함을 더하는 것이 중요합니다.";
-            outro = "이 모든 요소를 종합하여 당신의 얼굴에 찰떡같이 어울리는 눈썹을 완성해 보세요. 당신의 세련되고 강렬한 매력을 더욱 빛나게 할 것입니다!";
-        }
-        let listItemsHTML = '';
-        for (let i = 1; i <= 6; i++) {
-            const stepKey = `step${i}`;
-            const analysisResult = analysis[stepKey];
-            const recommendationText = resultTexts[stepKey][analysisResult];
-            const basisText = fromPhoto ? `<span class="photo-basis">(사진 분석: ${photoBasisTexts[stepKey][analysisResult]})</span>` : '';
-            const stepTitles = ["두께:", "위쪽 모양:", "아래쪽 모양:", "산/꼬리 길이:", "전체 길이:", "앞머리:"];
-            const stepSuffix = (i === 1) ? " 눈썹" : (i === 5) ? " 그리는 눈썹" : (i === 6) ? " 앞머리" : "";
-            listItemsHTML += `
-                <li>
-                    <strong>${stepTitles[i-1]}</strong> ${recommendationText}${stepSuffix}
-                    ${basisText}
-                </li>
-            `;
-        }
+
+        // 최종 결과 HTML 생성
         const resultHTML = `
             <div class="result-card">
-                <h3>${title}</h3>
-                <p>${intro}</p>
-                <br>
-                <h4>당신에게 제안하는 눈썹의 주요 특징:</h4>
+                <h3>${currentType.title}</h3>
+                <p style="font-weight: 500;">${currentType.description}</p>
+                
+                <div style="margin: 20px 0;">
+                    <img src="${currentType.image}" alt="${currentType.title}" style="width: 100%; border-radius: 8px;">
+                    <p style="font-size: 0.9em; color: #555; margin-top: 10px;">(예시: ${currentType.celebrity} 스타일)</p>
+                </div>
+
+                <h4>당신을 위한 상세 가이드</h4>
                 <ul>
-                    ${listItemsHTML}
+                    <li><strong>모양:</strong> ${detailTexts.shape} 눈썹</li>
+                    <li><strong>두께:</strong> ${detailTexts.thickness} 눈썹</li>
+                    <li><strong>길이:</strong> ${detailTexts.length} 얼굴 비율 보완</li>
+                    <li><strong>디테일:</strong> ${detailTexts.detail}</li>
                 </ul>
-                <br>
-                <p>${outro}</p>
             </div>
         `;
+
         content.innerHTML = resultHTML;
     }
 </script>
