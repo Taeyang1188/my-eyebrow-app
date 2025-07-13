@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>
         :root {
-            --primary-color: #6a5acd;
+            --primary-color: #6a5acd; /* SlateBlue */
             --secondary-color: #f0e6ff;
             --text-color: #333;
             --bg-color: #f8f9fa;
@@ -75,7 +75,6 @@
             max-width: 100%; max-height: 100%;
             height: auto; width: 80%;
         }
-        /* [수정] 레이어 순서 및 이벤트 처리 지정 */
         #user-image { z-index: 10; cursor: grab; }
         #user-image:active { cursor: grabbing; }
         #guideline-svg { z-index: 20; pointer-events: none; }
@@ -108,8 +107,17 @@
             padding: 20px; margin-bottom: 15px; text-align: left;
         }
         .result-card h3 { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 15px;}
-        .result-card ul { padding-left: 20px; margin: 0; }
-        .result-card li { margin-bottom: 10px; }
+        .result-card ul { padding-left: 20px; margin: 0; list-style-type: none;}
+        .result-card li { margin-bottom: 12px; }
+        /* [추가] 사진 분석 결과 텍스트 스타일 */
+        .photo-basis {
+            font-size: 0.8em;
+            color: #666;
+            display: block;
+            padding-left: 10px;
+            border-left: 2px solid var(--primary-color);
+            margin-top: 5px;
+        }
         #loader {
             border: 8px solid #f3f3f3; border-radius: 50%;
             border-top: 8px solid var(--primary-color);
@@ -278,14 +286,13 @@
     async function loadModels() {
         const MODEL_URL = './models';
         try {
-            console.log("모델 로딩을 시작합니다...");
             await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
             await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
             modelsLoaded = true;
-            console.log("모델 로딩 완료! 이제 사진 분석을 할 수 있습니다.");
+            console.log("모델 로딩 완료!");
         } catch (error) {
             console.error("모델 로딩 실패:", error);
-            alert("분석 모델을 불러오는 데 실패했습니다. 페이지를 새로고침 해주세요.");
+            alert("분석 모델을 불러오는 데 실패했습니다.");
         }
     }
     loadModels();
@@ -326,7 +333,7 @@
     if (opacitySlider) {
         opacitySlider.addEventListener('input', (e) => { if(userImage) userImage.style.opacity = e.target.value; });
     }
-
+    
     const guidelineSVG = document.getElementById('guideline-svg');
     const ovalGuide = document.getElementById('oval-guide');
     const redLine = document.getElementById('red-line');
@@ -342,14 +349,12 @@
         const baseRx = svgWidth / 3; 
         const rx = baseRx * (sizePercent / 100);
         const ry = rx * IDEAL_ASPECT_RATIO;
-
         ovalGuide.setAttribute('rx', rx);
         ovalGuide.setAttribute('ry', ry);
         redLine.setAttribute('x1', 150 - rx);
         redLine.setAttribute('x2', 150 + rx);
         blueLine.setAttribute('y1', 200 - ry);
         blueLine.setAttribute('y2', 200 + ry);
-        
         const sectionWidth = (rx * 2) / 4;
         const startX = 150 - rx;
         greenLines.forEach((line, index) => {
@@ -359,35 +364,28 @@
             line.setAttribute('y1', 200 - ry);
             line.setAttribute('y2', 200 + ry);
         });
-        
         draggableLineVisual.setAttribute('x1', 150 - rx);
         draggableLineVisual.setAttribute('x2', 150 + rx);
         draggableLineHandle.setAttribute('x1', 150 - rx);
         draggableLineHandle.setAttribute('x2', 150 + rx);
     }
-
     if(guidelineSizeSlider) {
         guidelineSizeSlider.addEventListener('input', (e) => {
             updateGuidelineSize(e.target.value);
         });
     }
-    
     updateGuidelineSize(100);
     
-    // [수정] 이미지와 가이드라인 드래그 충돌 해결 로직
     let isImageDragging = false;
     let isLineDragging = false;
     let startX, startY, initialLeft, initialTop;
-
     if (guideContainer) {
         guideContainer.addEventListener('mousedown', e => {
-            // 드래그 가능한 하늘색 선을 클릭한 경우
             if (e.target.id === 'draggable-line-handle') {
                 isLineDragging = true;
-                guidelineSVG.style.pointerEvents = 'all';
+                if(guidelineSVG) guidelineSVG.style.pointerEvents = 'all';
                 return;
             }
-            // 그 외의 영역을 클릭한 경우 (이미지 드래그)
             if (!userImage.src || userImage.style.display === 'none') return;
             e.preventDefault();
             isImageDragging = true;
@@ -398,9 +396,7 @@
             initialTop = userImage.offsetTop;
         });
     }
-
     window.addEventListener('mousemove', (e) => {
-        // 하늘색 선 드래그 로직
         if (isLineDragging && guidelineSVG) {
             const CTM = guidelineSVG.getScreenCTM().inverse();
             const pt = guidelineSVG.createSVGPoint();
@@ -413,13 +409,11 @@
             draggableLineHandle.setAttribute('y2', svgP.y);
             return;
         }
-        // 이미지 드래그 로직
         if (isImageDragging && userImage) {
             userImage.style.left = `${initialLeft + (e.clientX - startX)}px`;
             userImage.style.top = `${initialTop + (e.clientY - startY)}px`;
         }
     });
-
     window.addEventListener('mouseup', () => {
         if(isLineDragging) {
             isLineDragging = false;
@@ -434,7 +428,7 @@
     async function analyzePhoto() {
         if (!modelsLoaded) { alert("분석 모델이 아직 로딩 중입니다."); return; }
         if (!userImage.src || userImage.style.display === 'none') { alert("먼저 사진을 선택해주세요."); return; }
-        loader.style.display = 'block';
+        if(loader) loader.style.display = 'block';
         if(analyzeBtn) analyzeBtn.style.display = 'none';
         try {
             const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks();
@@ -496,7 +490,7 @@
             const step6 = (step4 === 'A' || step2 === 'C') ? 'E' : 'F';
             
             const analysisResult = { step1, step2, step3, step4, step5, step6 };
-            displayResults(analysisResult);
+            displayResults(analysisResult, true); // 사진 분석임을 알림
             showPage('result-page');
         } catch (error) {
             console.error("사진 분석 중 오류 발생:", error);
@@ -521,13 +515,15 @@
             alert("모든 질문에 답변해주세요!");
             return;
         }
-        displayResults(analysisResult);
+        displayResults(analysisResult, false); // 설문 분석임을 알림
         showPage('result-page');
     }
 
-    function displayResults(analysis) {
+    function displayResults(analysis, fromPhoto = false) {
         const content = document.getElementById('result-content');
         if (!content) return;
+
+        // 추천 멘트 텍스트
         const resultTexts = {
             step1: { A: "도톰한", B: "얇은" },
             step2: { C: "산이 없는 부드러운 곡선 형태", D: "산이 있는 직선적이고 각진 형태" },
@@ -536,6 +532,17 @@
             step5: { C: "얼굴이 덜 동그래 보이도록 조금 길게", D: "얼굴의 세로 길이를 보완하도록 조금 짧게" },
             step6: { E: "옅고 부드럽게 표현하는", F: "또렷하고 결을 살려 표현하는" }
         };
+
+        // [추가] 사진 분석 시 보여줄 근거 텍스트
+        const photoBasisTexts = {
+            step1: { A: "얼굴이 길거나 눈과 눈썹 사이가 먼 편", B: "얼굴이 짧거나 눈과 눈썹 사이가 좁은 편" },
+            step2: { C: "턱선이 145도 이상으로 부드러운 편", D: "턱선이 145도 미만으로 각진 편" },
+            step3: { E: "눈의 세로 비율이 높아 동그란 편", F: "눈의 가로 비율이 높아 긴 편" },
+            step4: { A: "이목구비가 중앙에 모여있는 편", B: "이목구비가 바깥으로 퍼져있는 편" },
+            step5: { C: "얼굴 세로/가로 비율이 1.2 미만으로 동그란 편", D: "얼굴 세로/가로 비율이 1.2 이상으로 긴 편" },
+            step6: { E: "부드러운 인상(내심안 또는 둥근 턱)", F: "또렷한 인상(외심안 또는 각진 턱)" }
+        };
+
         let title, intro, outro;
         if (analysis.step2 === 'C') {
             title = `당신의 매력을 극대화할 "<strong>부드럽고 청순한 동안 눈썹</strong>"`;
@@ -546,6 +553,27 @@
             intro = "축하드립니다! 당신은 세련되고 뚜렷하며 고급스러운 성숙한 인상을 가장 잘 나타낼 수 있는 타입입니다. 당신의 매력을 더욱 강조할 눈썹은 직선적인 요소를 활용하여 또렷한 인상을 부여하고, 적절한 산을 통해 입체감과 시원함을 더하는 것이 중요합니다.";
             outro = "이 모든 요소를 종합하여 당신의 얼굴에 찰떡같이 어울리는 눈썹을 완성해 보세요. 당신의 세련되고 강렬한 매력을 더욱 빛나게 할 것입니다!";
         }
+        
+        let listItemsHTML = '';
+        for (let i = 1; i <= 6; i++) {
+            const stepKey = `step${i}`;
+            const analysisResult = analysis[stepKey];
+            const recommendationText = resultTexts[stepKey][analysisResult];
+            
+            // 사진 분석일 경우에만 근거 텍스트 추가
+            const basisText = fromPhoto ? `<span class="photo-basis">(사진 분석: ${photoBasisTexts[stepKey][analysisResult]})</span>` : '';
+            
+            const stepTitles = ["두께:", "위쪽 모양:", "아래쪽 모양:", "산/꼬리 길이:", "전체 길이:", "앞머리:"];
+            const stepSuffix = (i === 1) ? " 눈썹" : (i === 5) ? " 그리는 눈썹" : (i === 6) ? " 앞머리" : "";
+
+            listItemsHTML += `
+                <li>
+                    <strong>${stepTitles[i-1]}</strong> ${recommendationText}${stepSuffix}
+                    ${basisText}
+                </li>
+            `;
+        }
+
         const resultHTML = `
             <div class="result-card">
                 <h3>${title}</h3>
@@ -553,12 +581,7 @@
                 <br>
                 <h4>당신에게 제안하는 눈썹의 주요 특징:</h4>
                 <ul>
-                    <li><strong>두께:</strong> ${resultTexts.step1[analysis.step1]} 눈썹</li>
-                    <li><strong>위쪽 모양:</strong> ${resultTexts.step2[analysis.step2]}</li>
-                    <li><strong>아래쪽 모양:</strong> ${resultTexts.step3[analysis.step3]}</li>
-                    <li><strong>산/꼬리 길이:</strong> ${resultTexts.step4[analysis.step4]}</li>
-                    <li><strong>전체 길이:</strong> ${resultTexts.step5[analysis.step5]} 그리는 눈썹</li>
-                    <li><strong>앞머리:</strong> ${resultTexts.step6[analysis.step6]} 앞머리</li>
+                    ${listItemsHTML}
                 </ul>
                 <br>
                 <p>${outro}</p>
