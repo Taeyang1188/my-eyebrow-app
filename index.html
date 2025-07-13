@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>
         :root {
-            --primary-color: #6a5acd; /* SlateBlue */
+            --primary-color: #6a5acd;
             --secondary-color: #f0e6ff;
             --text-color: #333;
             --bg-color: #f8f9fa;
@@ -75,9 +75,11 @@
             max-width: 100%; max-height: 100%;
             height: auto; width: 80%;
         }
-        #user-image { cursor: grab; }
+        /* [수정] 레이어 순서 및 이벤트 처리 지정 */
+        #user-image { z-index: 10; cursor: grab; }
         #user-image:active { cursor: grabbing; }
-        #overlay-canvas, #guideline-svg { pointer-events: none; }
+        #guideline-svg { z-index: 20; pointer-events: none; }
+        #overlay-canvas { z-index: 30; pointer-events: none; }
         #guideline-svg .draggable-line {
             pointer-events: all;
             cursor: ns-resize;
@@ -143,9 +145,10 @@
                     <ellipse id="oval-guide" cx="150" cy="200" rx="100" ry="130" stroke="rgba(0,0,0,0.5)" stroke-width="2" stroke-dasharray="5,5" fill="none" />
                     <line id="red-line" x1="50" y1="200" x2="250" y2="200" stroke="red" stroke-width="1.5" />
                     <line id="blue-line" x1="150" y1="70" x2="150" y2="330" stroke="blue" stroke-width="1.5" />
-                    <line class="green-line" x1="100" y1="70" x2="100" y2="330" stroke="green" stroke-width="1" />
-                    <line class="green-line" x1="150" y1="70" x2="150" y2="330" stroke="green" stroke-width="1" />
-                    <line class="green-line" x1="200" y1="70" x2="200" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" x1="75" y1="70" x2="75" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" x1="125" y1="70" x2="125" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" x1="175" y1="70" x2="175" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" x1="225" y1="70" x2="225" y2="330" stroke="green" stroke-width="1" />
                     <line id="draggable-line-visual" x1="50" y1="220" x2="250" y2="220" stroke="skyblue" stroke-width="2" />
                     <line class="draggable-line" id="draggable-line-handle" x1="50" y1="220" x2="250" y2="220" />
                 </svg>
@@ -315,34 +318,6 @@
         });
     }
 
-    if (userImage) {
-        let isImageDragging = false;
-        let startX, startY, initialLeft, initialTop;
-        userImage.addEventListener('mousedown', e => {
-            if (!userImage.src) return;
-            e.preventDefault();
-            isImageDragging = true;
-            userImage.style.cursor = 'grabbing';
-            startX = e.clientX;
-            startY = e.clientY;
-            initialLeft = userImage.offsetLeft;
-            initialTop = userImage.offsetTop;
-            window.addEventListener('mousemove', dragImage);
-            window.addEventListener('mouseup', stopDragImage);
-        });
-        function dragImage(e) {
-            if (!isImageDragging) return;
-            userImage.style.left = `${initialLeft + (e.clientX - startX)}px`;
-            userImage.style.top = `${initialTop + (e.clientY - startY)}px`;
-        }
-        function stopDragImage() {
-            isImageDragging = false;
-            userImage.style.cursor = 'grab';
-            window.removeEventListener('mousemove', dragImage);
-            window.removeEventListener('mouseup', stopDragImage);
-        }
-    }
-
     const sizeSlider = document.getElementById('size-slider');
     const opacitySlider = document.getElementById('opacity-slider');
     if (sizeSlider) {
@@ -364,7 +339,6 @@
     
     function updateGuidelineSize(sizePercent) {
         const svgWidth = 300;
-        const svgHeight = 400;
         const baseRx = svgWidth / 3; 
         const rx = baseRx * (sizePercent / 100);
         const ry = rx * IDEAL_ASPECT_RATIO;
@@ -376,21 +350,15 @@
         blueLine.setAttribute('y1', 200 - ry);
         blueLine.setAttribute('y2', 200 + ry);
         
-        const quarterWidth = rx / 2;
-        greenLines[0].setAttribute('x1', 150 - quarterWidth);
-        greenLines[0].setAttribute('x2', 150 - quarterWidth);
-        greenLines[0].setAttribute('y1', 200 - ry);
-        greenLines[0].setAttribute('y2', 200 + ry);
-        
-        greenLines[1].setAttribute('x1', 150);
-        greenLines[1].setAttribute('x2', 150);
-        greenLines[1].setAttribute('y1', 200 - ry);
-        greenLines[1].setAttribute('y2', 200 + ry);
-
-        greenLines[2].setAttribute('x1', 150 + quarterWidth);
-        greenLines[2].setAttribute('x2', 150 + quarterWidth);
-        greenLines[2].setAttribute('y1', 200 - ry);
-        greenLines[2].setAttribute('y2', 200 + ry);
+        const sectionWidth = (rx * 2) / 4;
+        const startX = 150 - rx;
+        greenLines.forEach((line, index) => {
+            const xPos = startX + (sectionWidth * (index + 1));
+            line.setAttribute('x1', xPos);
+            line.setAttribute('x2', xPos);
+            line.setAttribute('y1', 200 - ry);
+            line.setAttribute('y2', 200 + ry);
+        });
         
         draggableLineVisual.setAttribute('x1', 150 - rx);
         draggableLineVisual.setAttribute('x2', 150 + rx);
@@ -403,37 +371,65 @@
             updateGuidelineSize(e.target.value);
         });
     }
+    
+    updateGuidelineSize(100);
+    
+    // [수정] 이미지와 가이드라인 드래그 충돌 해결 로직
+    let isImageDragging = false;
+    let isLineDragging = false;
+    let startX, startY, initialLeft, initialTop;
 
-    if(draggableLineHandle) {
-        let isLineDragging = false;
-        draggableLineHandle.addEventListener('mousedown', (e) => {
-            isLineDragging = true;
-            if(guidelineSVG) guidelineSVG.style.pointerEvents = 'all';
+    if (guideContainer) {
+        guideContainer.addEventListener('mousedown', e => {
+            // 드래그 가능한 하늘색 선을 클릭한 경우
+            if (e.target.id === 'draggable-line-handle') {
+                isLineDragging = true;
+                guidelineSVG.style.pointerEvents = 'all';
+                return;
+            }
+            // 그 외의 영역을 클릭한 경우 (이미지 드래그)
+            if (!userImage.src || userImage.style.display === 'none') return;
+            e.preventDefault();
+            isImageDragging = true;
+            userImage.style.cursor = 'grabbing';
+            startX = e.clientX;
+            startY = e.clientY;
+            initialLeft = userImage.offsetLeft;
+            initialTop = userImage.offsetTop;
         });
-        
-        window.addEventListener('mousemove', (e) => {
-            if (!isLineDragging || !guidelineSVG) return;
+    }
+
+    window.addEventListener('mousemove', (e) => {
+        // 하늘색 선 드래그 로직
+        if (isLineDragging && guidelineSVG) {
             const CTM = guidelineSVG.getScreenCTM().inverse();
             const pt = guidelineSVG.createSVGPoint();
             pt.x = e.clientX;
             pt.y = e.clientY;
             const svgP = pt.matrixTransform(CTM);
-            
             draggableLineVisual.setAttribute('y1', svgP.y);
             draggableLineVisual.setAttribute('y2', svgP.y);
             draggableLineHandle.setAttribute('y1', svgP.y);
             draggableLineHandle.setAttribute('y2', svgP.y);
-        });
+            return;
+        }
+        // 이미지 드래그 로직
+        if (isImageDragging && userImage) {
+            userImage.style.left = `${initialLeft + (e.clientX - startX)}px`;
+            userImage.style.top = `${initialTop + (e.clientY - startY)}px`;
+        }
+    });
 
-        window.addEventListener('mouseup', () => {
-            if(isLineDragging) {
-                isLineDragging = false;
-                if(guidelineSVG) guidelineSVG.style.pointerEvents = 'none';
-            }
-        });
-    }
-    
-    updateGuidelineSize(100);
+    window.addEventListener('mouseup', () => {
+        if(isLineDragging) {
+            isLineDragging = false;
+            if(guidelineSVG) guidelineSVG.style.pointerEvents = 'none';
+        }
+        if(isImageDragging) {
+            isImageDragging = false;
+            if(userImage) userImage.style.cursor = 'grab';
+        }
+    });
 
     async function analyzePhoto() {
         if (!modelsLoaded) { alert("분석 모델이 아직 로딩 중입니다."); return; }
