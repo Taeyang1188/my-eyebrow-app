@@ -181,51 +181,57 @@
             <button class="btn secondary" onclick="showPage('start-page')">뒤로 가기</button>
         </div>
 
-        <div id="quiz-page" class="page">
-            <h2>설문으로 진단하기</h2>
-            <p>아래 질문에 답하여<br>자신의 얼굴 특징과 가장 가까운 것을 선택해주세요.</p>
-            
-            <form id="quiz-form">
-                <div class="question">
-                    <p>1. 내 얼굴형은 전체적으로 어떤 느낌에 가깝나요?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q1" value="A"> 이마가 넓고 긴 편이며, 얼굴에 여백이 많다.</label>
-                        <label><input type="radio" name="q1" value="B"> 이마가 좁고 짧은 편이며, 얼굴이 꽉 차 보인다.</label>
-                    </div>
-                </div>
-                <div class="question">
-                    <p>2. 내 턱선과 얼굴의 전체적인 인상은?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q2" value="C"> 턱선이 둥글고, 부드럽고 동글동글한 인상이다.</label>
-                        <label><input type="radio" name="q2" value="D"> 턱선이 각지거나 뾰족하며, 직선적이고 또렷한 인상이다.</label>
-                    </div>
-                </div>
-                <div class="question">
-                    <p>3. 내 눈매는 어떤 모양에 가까운가요?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q3" value="E"> 눈의 가로 길이보다 세로 폭이 넓어 동그란 느낌이다.</label>
-                        <label><input type="radio" name="q3" value="F"> 눈의 세로 폭보다 가로 길이가 길어 시원하게 트여있다.</label>
-                    </div>
-                </div>
-                 <div class="question">
-                    <p>4. 이목구비가 얼굴 중앙에 모여있는 편인가요, 퍼져있는 편인가요?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q4" value="inner"> 이목구비가 안쪽으로 모여있는 내심형 얼굴이다.</label>
-                        <label><input type="radio" name="q4" value="outer"> 이목구비가 바깥쪽으로 퍼져있는 외심형 얼굴이다.</label>
-                    </div>
-                </div>
-                <button type="button" class="btn" onclick="analyzeQuiz()">결과 확인하기</button>
-                <button type="button" class="btn secondary" onclick="showPage('start-page')">뒤로 가기</button>
-            </form>
+<div id="quiz-page" class="page">
+    <h2>설문으로 진단하기</h2>
+    <p>아래 질문에 답하여<br>자신에게 꼭 맞는 눈썹 스타일을 찾아보세요.</p>
+    
+    <form id="quiz-form">
+        <div class="question">
+            <p>1. 내 얼굴의 특징은 어디에 가깝나요?</p>
+            <div class="options">
+                <label><input type="radio" name="q1" value="A"> 얼굴이 길거나, 눈과 눈썹 사이가 멀다.</label>
+                <label><input type="radio" name="q1" value="B"> 얼굴이 짧거나, 눈과 눈썹 사이가 좁다.</label>
+            </div>
         </div>
-
-        <div id="result-page" class="page">
-            <h2>진단 결과 🧐</h2>
-            <p>당신에게 어울리는 최고의 눈썹 스타일을 추천합니다!</p>
-            <div id="result-content"></div>
-            <button class="btn" onclick="showPage('start-page')">다시 하기</button>
+        <div class="question">
+            <p>2. 나의 전체적인 인상이나 얼굴 라인은?</p>
+            <div class="options">
+                <label><input type="radio" name="q2" value="C"> 얼굴선이 둥글고, 청순하고 부드러운 인상이다.</label>
+                <label><input type="radio" name="q2" value="D"> 얼굴선이 각지고, 세련되고 또렷한 인상이다.</label>
+            </div>
         </div>
-    </div>
+        <div class="question">
+            <p>3. 내 눈 모양은 어떤가요?</p>
+            <div class="options">
+                <label><input type="radio" name="q3" value="E"> 눈이 전체적으로 동그란 편이다.</label>
+                <label><input type="radio" name="q3" value="F"> 눈이 가로로 긴 편이다.</label>
+            </div>
+        </div>
+        <div class="question">
+            <p>4. 내 이목구비는 얼굴 중앙에 모여있는 편인가요?</p>
+            <div class="options">
+                <label><input type="radio" name="q4" value="A"> 이목구비가 중앙에 모여있고, 눈 사이가 가깝다 (내심안).</label>
+                <label><input type="radio" name="q4" value="B"> 이목구비가 넓게 퍼져있고, 눈 사이가 멀다 (외심안).</label>
+            </div>
+        </div>
+        <div class="question">
+            <p>5. 내 얼굴의 가로/세로 비율은 어떤가요?</p>
+            <div class="options">
+                <label><input type="radio" name="q5" value="C"> 가로 대비 세로 길이가 짧은 동그란 얼굴형이다.</label>
+                <label><input type="radio" name="q5" value="D"> 가로 대비 세로 길이가 긴 타원형/긴 얼굴형이다.</label>
+            </div>
+        </div>
+        <div class="question">
+            <p>6. 나의 미간 너비와 추구하는 인상은?</p>
+            <div class="options">
+                <label><input type="radio" name="q6" value="E"> 미간이 좁은 편이며, 부드러운 인상을 원한다.</label>
+                <label><input type="radio" name="q6" value="F"> 미간이 넓은 편이며, 또렷한 인상을 원한다.</label>
+            </div>
+        </div>
+        <button type="button" class="btn" onclick="analyzeQuiz()">결과 확인하기</button>
+        <button type="button" class="btn secondary" onclick="showPage('start-page')">뒤로 가기</button>
+    </form>
+</div>
 
     <script>
         // 전역 변수 및 설정
@@ -369,7 +375,7 @@ async function analyzePhoto() {
             alert("얼굴을 인식할 수 없습니다. 더 선명하고 정면을 바라보는 사진을 사용해주세요.");
             return;
         }
-
+        
         const canvas = document.getElementById('overlay-canvas');
         const ctx = canvas.getContext('2d');
         const imageRect = userImage.getBoundingClientRect();
@@ -390,53 +396,56 @@ async function analyzePhoto() {
         
         const landmarks = detection.landmarks;
         const jaw = landmarks.getJawOutline();
-        const leftEye = landmarks.getLeftEye();
-        const rightEye = landmarks.getRightEye();
-        const nose = landmarks.getNose();
+        const faceWidth = jaw[16].x - jaw[0].x;
 
-        // 1. 얼굴형(A/B) 분석
+        // Step 1: 두께 (A/B)
         const upperFacePointY = (jaw[0].y + jaw[16].y) / 2;
         const eyebrowCenterY = (landmarks.getLeftEyeBrow()[2].y + landmarks.getRightEyeBrow()[2].y) / 2;
         const upperFaceHeight = eyebrowCenterY - upperFacePointY;
-        const noseCenterY = (nose[0].y + nose[3].y) / 2;
+        const noseCenterY = (landmarks.getNose()[0].y + landmarks.getNose()[3].y) / 2;
         const chinPointY = jaw[8].y;
         const lowerFaceHeight = chinPointY - noseCenterY;
         const verticalRatio = upperFaceHeight / lowerFaceHeight;
-        const longFaceThreshold = 0.9;
-        const faceTypeAB = (verticalRatio > longFaceThreshold) ? 'A' : 'B';
+        const step1_faceShape = (verticalRatio > 0.9) ? 'A' : 'B';
 
-        // 2. 턱선(C/D) 분석
-        const p1 = jaw[2], p2 = jaw[4], p3 = jaw[8];
-        const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
-        const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
-        const dotProduct = v1.x * v2.x + v1.y * v2.y;
-        const magnitude1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-        const magnitude2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-        const jawAngle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
-        const jawAngleThreshold = 145;
-        const faceTypeCD = (jawAngle < jawAngleThreshold) ? 'D' : 'C';
-
-        // 3. 눈매(E/F) 분석
+        // Step 2: 위쪽 모양 (C/D)
+        const p1_jaw = jaw[2], p2_jaw = jaw[4], p3_jaw = jaw[8];
+        const v1_jaw = { x: p1_jaw.x - p2_jaw.x, y: p1_jaw.y - p2_jaw.y };
+        const v2_jaw = { x: p3_jaw.x - p2_jaw.x, y: p3_jaw.y - p2_jaw.y };
+        const dotProduct_jaw = v1_jaw.x * v2_jaw.x + v1_jaw.y * v2_jaw.y;
+        const magnitude1_jaw = Math.sqrt(v1_jaw.x**2 + v1_jaw.y**2);
+        const magnitude2_jaw = Math.sqrt(v2_jaw.x**2 + v2_jaw.y**2);
+        const jawAngle = Math.acos(dotProduct_jaw / (magnitude1_jaw * magnitude2_jaw)) * (180 / Math.PI);
+        const step2_jawLine = (jawAngle < 145) ? 'D' : 'C';
+        
+        // Step 3: 아래쪽 모양 (E/F)
+        const leftEye = landmarks.getLeftEye();
         const leftEyeWidth = leftEye[3].x - leftEye[0].x;
         const leftEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2;
-        const eyeRatio = leftEyeWidth / leftEyeHeight;
-        const eyeShape = (eyeRatio < 3.0) ? 'E' : 'F';
+        const step3_eyeShape = (leftEyeWidth / leftEyeHeight < 3.0) ? 'E' : 'F';
 
-        // 4. 이목구비(inner/outer) 분석
-        const faceWidth = jaw[16].x - jaw[0].x;
-        const midEyesX = (leftEye[0].x + rightEye[3].x) / 2;
-        const eyeSpreadRatio = Math.abs(midEyesX - nose[0].x) / faceWidth;
-        const featurePosition = (eyeSpreadRatio < 0.03) ? 'inner' : 'outer';
+        // Step 4: 산/꼬리 길이 (A/B)
+        const midEyesX = (landmarks.getLeftEye()[0].x + landmarks.getRightEye()[3].x) / 2;
+        const eyeSpreadRatio = Math.abs(midEyesX - landmarks.getNose()[0].x) / faceWidth;
+        const step4_featurePosition = (eyeSpreadRatio < 0.03) ? 'A' : 'B';
 
-        // 최종 결과 조합
-        const photoResult = {
-            faceShape: faceTypeAB,
-            jawLine: faceTypeCD,
-            eyeShape: eyeShape,
-            featurePosition: featurePosition
+        // Step 5: 전체 길이 (C/D)
+        const faceHeight = jaw[8].y - (jaw[0].y + jaw[16].y) / 2;
+        const step5_faceRatio = (faceHeight / faceWidth < 1.2) ? 'C' : 'D';
+
+        // Step 6: 앞머리 (E/F)
+        const step6_start = (step4_featurePosition === 'A' || step2_jawLine === 'C') ? 'E' : 'F';
+
+        const analysisResult = {
+            step1: step1_faceShape,
+            step2: step2_jawLine,
+            step3: step3_eyeShape,
+            step4: step4_featurePosition,
+            step5: step5_faceRatio,
+            step6: step6_start
         };
-
-        displayResults(photoResult, true);
+        
+        displayResults(analysisResult);
         showPage('result-page');
 
     } catch (error) {
