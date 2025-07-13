@@ -53,7 +53,14 @@
         }
         .btn:hover { background-color: #5a4ab9; }
         .btn:active { transform: scale(0.98); }
-        .btn.secondary { background-color: #e9ecef; color: var(--text-color); }
+        .btn.secondary {
+             background-color: #e9ecef; color: var(--text-color);
+        }
+        #photo-page .btn.secondary {
+            display: inline-block;
+            width: auto;
+            padding: 15px 30px;
+        }
         .btn.secondary:hover { background-color: #d3d9df; }
         .page { display: none; }
         .page.active { display: block; }
@@ -73,8 +80,8 @@
         #overlay-canvas, #guideline-svg { pointer-events: none; }
         #guideline-svg .draggable-line {
             pointer-events: all;
-            cursor: ew-resize;
-            stroke-width: 6px;
+            cursor: ns-resize;
+            stroke-width: 8px;
             stroke: rgba(0,0,0,0);
         }
         .sliders {
@@ -136,11 +143,11 @@
                     <ellipse id="oval-guide" cx="150" cy="200" rx="100" ry="130" stroke="rgba(0,0,0,0.5)" stroke-width="2" stroke-dasharray="5,5" fill="none" />
                     <line id="red-line" x1="50" y1="200" x2="250" y2="200" stroke="red" stroke-width="1.5" />
                     <line id="blue-line" x1="150" y1="70" x2="150" y2="330" stroke="blue" stroke-width="1.5" />
-                    <line class="green-line" id="green-line-1" x1="100" y1="70" x2="100" y2="330" stroke="green" stroke-width="1" />
-                    <line class="green-line" id="green-line-2" x1="150" y1="70" x2="150" y2="330" stroke="green" stroke-width="1" />
-                    <line class="green-line" id="green-line-3" x1="200" y1="70" x2="200" y2="330" stroke="green" stroke-width="1" />
-                    <line id="draggable-line-visual" x1="170" y1="70" x2="170" y2="330" stroke="skyblue" stroke-width="2" />
-                    <line class="draggable-line" id="draggable-line-handle" x1="170" y1="70" x2="170" y2="330" />
+                    <line class="green-line" x1="100" y1="70" x2="100" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" x1="150" y1="70" x2="150" y2="330" stroke="green" stroke-width="1" />
+                    <line class="green-line" x1="200" y1="70" x2="200" y2="330" stroke="green" stroke-width="1" />
+                    <line id="draggable-line-visual" x1="50" y1="220" x2="250" y2="220" stroke="skyblue" stroke-width="2" />
+                    <line class="draggable-line" id="draggable-line-handle" x1="50" y1="220" x2="250" y2="220" />
                 </svg>
                 <img id="user-image" src="" alt="User's face" style="display:none;">
                 <canvas id="overlay-canvas"></canvas>
@@ -241,7 +248,6 @@
     </div>
 
 <script>
-    // 전역 변수 및 설정
     const pages = document.querySelectorAll('.page');
     const loader = document.getElementById('loader');
     let modelsLoaded = false;
@@ -296,8 +302,8 @@
             reader.onload = (e) => {
                 userImage.src = e.target.result;
                 userImage.style.display = 'block';
-                photoControls.style.display = 'block';
-                analyzeBtn.style.display = 'block';
+                if(photoControls) photoControls.style.display = 'block';
+                if(analyzeBtn) analyzeBtn.style.display = 'block';
                 document.getElementById('size-slider').value = 80;
                 userImage.style.width = '80%';
                 document.getElementById('opacity-slider').value = 0.7;
@@ -359,7 +365,7 @@
     function updateGuidelineSize(sizePercent) {
         const svgWidth = 300;
         const svgHeight = 400;
-        const baseRx = svgWidth / 3;
+        const baseRx = svgWidth / 3; 
         const rx = baseRx * (sizePercent / 100);
         const ry = rx * IDEAL_ASPECT_RATIO;
 
@@ -369,52 +375,63 @@
         redLine.setAttribute('x2', 150 + rx);
         blueLine.setAttribute('y1', 200 - ry);
         blueLine.setAttribute('y2', 200 + ry);
-        greenLines[0].setAttribute('x1', 150 - rx / 2);
-        greenLines[0].setAttribute('x2', 150 - rx / 2);
+        
+        const quarterWidth = rx / 2;
+        greenLines[0].setAttribute('x1', 150 - quarterWidth);
+        greenLines[0].setAttribute('x2', 150 - quarterWidth);
         greenLines[0].setAttribute('y1', 200 - ry);
         greenLines[0].setAttribute('y2', 200 + ry);
+        
         greenLines[1].setAttribute('x1', 150);
         greenLines[1].setAttribute('x2', 150);
         greenLines[1].setAttribute('y1', 200 - ry);
         greenLines[1].setAttribute('y2', 200 + ry);
-        greenLines[2].setAttribute('x1', 150 + rx / 2);
-        greenLines[2].setAttribute('x2', 150 + rx / 2);
+
+        greenLines[2].setAttribute('x1', 150 + quarterWidth);
+        greenLines[2].setAttribute('x2', 150 + quarterWidth);
         greenLines[2].setAttribute('y1', 200 - ry);
         greenLines[2].setAttribute('y2', 200 + ry);
         
-        draggableLineVisual.setAttribute('y1', 200 - ry);
-        draggableLineVisual.setAttribute('y2', 200 + ry);
-        draggableLineHandle.setAttribute('y1', 200 - ry);
-        draggableLineHandle.setAttribute('y2', 200 + ry);
+        draggableLineVisual.setAttribute('x1', 150 - rx);
+        draggableLineVisual.setAttribute('x2', 150 + rx);
+        draggableLineHandle.setAttribute('x1', 150 - rx);
+        draggableLineHandle.setAttribute('x2', 150 + rx);
     }
 
-    guidelineSizeSlider.addEventListener('input', (e) => {
-        updateGuidelineSize(e.target.value);
-    });
+    if(guidelineSizeSlider) {
+        guidelineSizeSlider.addEventListener('input', (e) => {
+            updateGuidelineSize(e.target.value);
+        });
+    }
 
-    let isLineDragging = false;
-    draggableLineHandle.addEventListener('mousedown', (e) => {
-        isLineDragging = true;
-        guidelineSVG.style.pointerEvents = 'all';
-    });
-    guidelineSVG.addEventListener('mousemove', (e) => {
-        if (!isLineDragging) return;
-        const CTM = guidelineSVG.getScreenCTM().inverse();
-        const pt = guidelineSVG.createSVGPoint();
-        pt.x = e.clientX;
-        pt.y = e.clientY;
-        const svgP = pt.matrixTransform(CTM);
-        draggableLineVisual.setAttribute('x1', svgP.x);
-        draggableLineVisual.setAttribute('x2', svgP.x);
-        draggableLineHandle.setAttribute('x1', svgP.x);
-        draggableLineHandle.setAttribute('x2', svgP.x);
-    });
-    window.addEventListener('mouseup', () => {
-        if(isLineDragging) {
-            isLineDragging = false;
-            guidelineSVG.style.pointerEvents = 'none';
-        }
-    });
+    if(draggableLineHandle) {
+        let isLineDragging = false;
+        draggableLineHandle.addEventListener('mousedown', (e) => {
+            isLineDragging = true;
+            if(guidelineSVG) guidelineSVG.style.pointerEvents = 'all';
+        });
+        
+        window.addEventListener('mousemove', (e) => {
+            if (!isLineDragging || !guidelineSVG) return;
+            const CTM = guidelineSVG.getScreenCTM().inverse();
+            const pt = guidelineSVG.createSVGPoint();
+            pt.x = e.clientX;
+            pt.y = e.clientY;
+            const svgP = pt.matrixTransform(CTM);
+            
+            draggableLineVisual.setAttribute('y1', svgP.y);
+            draggableLineVisual.setAttribute('y2', svgP.y);
+            draggableLineHandle.setAttribute('y1', svgP.y);
+            draggableLineHandle.setAttribute('y2', svgP.y);
+        });
+
+        window.addEventListener('mouseup', () => {
+            if(isLineDragging) {
+                isLineDragging = false;
+                if(guidelineSVG) guidelineSVG.style.pointerEvents = 'none';
+            }
+        });
+    }
     
     updateGuidelineSize(100);
 
@@ -422,12 +439,12 @@
         if (!modelsLoaded) { alert("분석 모델이 아직 로딩 중입니다."); return; }
         if (!userImage.src || userImage.style.display === 'none') { alert("먼저 사진을 선택해주세요."); return; }
         loader.style.display = 'block';
-        analyzeBtn.style.display = 'none';
+        if(analyzeBtn) analyzeBtn.style.display = 'none';
         try {
             const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks();
             if (!detection) {
-                loader.style.display = 'none';
-                analyzeBtn.style.display = 'block';
+                if(loader) loader.style.display = 'none';
+                if(analyzeBtn) analyzeBtn.style.display = 'block';
                 alert("얼굴을 인식할 수 없습니다. 더 선명하고 정면을 바라보는 사진을 사용해주세요.");
                 return;
             }
@@ -489,8 +506,8 @@
             console.error("사진 분석 중 오류 발생:", error);
             alert("사진을 분석하는 중에 오류가 발생했습니다. 다른 사진으로 시도해보거나, 설문으로 진단하는 방법을 이용해주세요.");
         } finally {
-            loader.style.display = 'none';
-            analyzeBtn.style.display = 'block';
+            if(loader) loader.style.display = 'none';
+            if(analyzeBtn) analyzeBtn.style.display = 'block';
         }
     }
 
