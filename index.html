@@ -394,7 +394,7 @@ async function analyzePhoto() {
         const magnitude1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
         const magnitude2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
         const jawAngle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
-        const jawAngleThreshold = 145;
+        const jawAngleThreshold = 170;
         const faceTypeCD = (jawAngle < jawAngleThreshold) ? 'D' : 'C';
 
         // [개선 2] 얼굴 상하 비율 + 좌우 넓이 동시 고려 (A/B 타입 분석)
@@ -407,7 +407,7 @@ async function analyzePhoto() {
         const foreheadWidth = landmarks.getRightEyeBrow()[4].x - landmarks.getLeftEyeBrow()[0].x;
         const jawWidth = jaw[14].x - jaw[2].x;
         const horizontalRatio = foreheadWidth / jawWidth;
-        const verticalRatioThreshold = 1.0;
+        const verticalRatioThreshold = 1.2;
         const horizontalRatioThreshold = 1.0;
         let score = 0;
         if (verticalRatio > verticalRatioThreshold) score++;
