@@ -347,7 +347,6 @@ function showPage(pageId) {
             userImage.style.opacity = e.target.value;
         });
         
-// [개선된] 사진 분석 함수
 async function analyzePhoto() {
     if (!modelsLoaded) {
         alert("분석 모델이 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.");
@@ -360,9 +359,6 @@ async function analyzePhoto() {
 
     loader.style.display = 'block';
     analyzeBtn.style.display = 'none';
-    
-    const canvas = document.getElementById('overlay-canvas');
-    const ctx = canvas.getContext('2d');
 
     try {
         const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks();
@@ -373,7 +369,9 @@ async function analyzePhoto() {
             alert("얼굴을 인식할 수 없습니다. 더 선명하고 정면을 바라보는 사진을 사용해주세요.");
             return;
         }
-        
+
+        const canvas = document.getElementById('overlay-canvas');
+        const ctx = canvas.getContext('2d');
         const imageRect = userImage.getBoundingClientRect();
         const containerRect = guideContainer.getBoundingClientRect();
         
@@ -392,8 +390,22 @@ async function analyzePhoto() {
         
         const landmarks = detection.landmarks;
         const jaw = landmarks.getJawOutline();
-        
-        // --- 턱선 각도 계산 (C/D 타입) ---
+        const leftEye = landmarks.getLeftEye();
+        const rightEye = landmarks.getRightEye();
+        const nose = landmarks.getNose();
+
+        // 1. 얼굴형(A/B) 분석
+        const upperFacePointY = (jaw[0].y + jaw[16].y) / 2;
+        const eyebrowCenterY = (landmarks.getLeftEyeBrow()[2].y + landmarks.getRightEyeBrow()[2].y) / 2;
+        const upperFaceHeight = eyebrowCenterY - upperFacePointY;
+        const noseCenterY = (nose[0].y + nose[3].y) / 2;
+        const chinPointY = jaw[8].y;
+        const lowerFaceHeight = chinPointY - noseCenterY;
+        const verticalRatio = upperFaceHeight / lowerFaceHeight;
+        const longFaceThreshold = 0.9;
+        const faceTypeAB = (verticalRatio > longFaceThreshold) ? 'A' : 'B';
+
+        // 2. 턱선(C/D) 분석
         const p1 = jaw[2], p2 = jaw[4], p3 = jaw[8];
         const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
         const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
@@ -401,39 +413,27 @@ async function analyzePhoto() {
         const magnitude1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
         const magnitude2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
         const jawAngle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
-        const faceTypeCD = (jawAngle < 145) ? 'D' : 'C';
+        const jawAngleThreshold = 145;
+        const faceTypeCD = (jawAngle < jawAngleThreshold) ? 'D' : 'C';
 
-        // --- 얼굴형 분석 (A/B 타입) ---
-        const eyebrowTop = (landmarks.getLeftEyeBrow()[2].y + landmarks.getRightEyeBrow()[2].y) / 2;
-        const noseTip = landmarks.getNose()[3].y;
-        const chin = jaw[8].y;
+        // 3. 눈매(E/F) 분석
+        const leftEyeWidth = leftEye[3].x - leftEye[0].x;
+        const leftEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2;
+        const eyeRatio = leftEyeWidth / leftEyeHeight;
+        const eyeShape = (eyeRatio < 3.0) ? 'E' : 'F';
 
-        // [개선 1] M자 이마 등 다양한 얼굴 형태 고려: 얼굴 3분할 비율 기반으로 변경
-        const middleFaceHeight = noseTip - eyebrowTop; // 중안부 (눈썹-코끝) 길이
-        const lowerFaceHeight = chin - noseTip;      // 하안부 (코끝-턱) 길이
-        const verticalRatio = middleFaceHeight / lowerFaceHeight; // 상안부 대신 중안부와 하안부 비율로 긴 얼굴 판단
-
-        const foreheadWidth = landmarks.getRightEyeBrow()[4].x - landmarks.getLeftEyeBrow()[0].x;
-        const jawWidth = jaw[14].x - jaw[2].x;
-        const horizontalRatio = foreheadWidth / jawWidth;
-
-        let score = 0;
-        if (verticalRatio < 0.95) score++; // 중안부가 하안부보다 짧으면 긴 얼굴형일 확률 높음 (+1점)
-        if (horizontalRatio > 1.0) score++; // 이마가 넓으면 +1점
-        const faceTypeAB = (score >= 1) ? 'A' : 'B';
-
-        // [개선 2] 이목구비 집중도 분석 정확도 조정
+        // 4. 이목구비(inner/outer) 분석
         const faceWidth = jaw[16].x - jaw[0].x;
-        const midEyesX = (landmarks.getLeftEye()[0].x + landmarks.getRightEye()[3].x) / 2;
-        const eyeSpreadRatio = Math.abs(midEyesX - landmarks.getNose()[0].x) / faceWidth;
-        const faceTypeInnerOuter = (eyeSpreadRatio < 0.03) ? 'inner' : 'outer'; // 임계값을 0.045 -> 0.03으로 낮춰 더 깐깐하게 판단
+        const midEyesX = (leftEye[0].x + rightEye[3].x) / 2;
+        const eyeSpreadRatio = Math.abs(midEyesX - nose[0].x) / faceWidth;
+        const featurePosition = (eyeSpreadRatio < 0.03) ? 'inner' : 'outer';
 
         // 최종 결과 조합
         const photoResult = {
             faceShape: faceTypeAB,
             jawLine: faceTypeCD,
-            eyeShape: (landmarks.getLeftEye()[3].x - landmarks.getLeftEye()[0].x) / ((landmarks.getLeftEye()[4].y + landmarks.getLeftEye()[5].y) / 2 - (landmarks.getLeftEye()[1].y + landmarks.getLeftEye()[2].y) / 2) < 3.0 ? 'E' : 'F',
-            featurePosition: faceTypeInnerOuter
+            eyeShape: eyeShape,
+            featurePosition: featurePosition
         };
 
         displayResults(photoResult, true);
@@ -447,7 +447,6 @@ async function analyzePhoto() {
         analyzeBtn.style.display = 'block';
     }
 }
-
         // 설문 분석 함수
         function analyzeQuiz() {
             const form = document.getElementById('quiz-form');
