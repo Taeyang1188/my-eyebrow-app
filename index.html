@@ -1,260 +1,3 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>眉완성: 내 인생 눈썹 찾기</title>
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-    <style>
-        :root {
-            --primary-color: #6a5acd; /* SlateBlue */
-            --secondary-color: #f0e6ff;
-            --text-color: #333;
-            --bg-color: #f8f9fa;
-            --container-bg: #ffffff;
-            --border-radius: 16px;
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            box-sizing: border-box;
-            color: var(--text-color);
-        }
-        .main-container {
-            width: 100%;
-            max-width: 500px;
-            background-color: var(--container-bg);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            padding: 25px;
-            box-sizing: border-box;
-            text-align: center;
-        }
-        h1, h2, h3, h4 {
-            margin: 0 0 15px;
-            color: var(--primary-color);
-        }
-        h1 { font-size: 2rem; }
-        h2 { font-size: 1.6rem; }
-        h4 { font-size: 1.1rem; margin-top: 20px;}
-        p { line-height: 1.7; margin: 0 0 20px; }
-        .btn {
-            display: block; width: 100%; padding: 15px; margin: 10px 0;
-            border: none; border-radius: 12px; background-color: var(--primary-color);
-            color: white; font-size: 1.1rem; font-weight: bold; cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-        .btn:hover { background-color: #5a4ab9; }
-        .btn:active { transform: scale(0.98); }
-        .btn.secondary {
-             background-color: #e9ecef; color: var(--text-color);
-        }
-        #photo-page .btn.secondary {
-            display: inline-block;
-            width: auto;
-            padding: 15px 30px;
-        }
-        .btn.secondary:hover { background-color: #d3d9df; }
-        .page { display: none; }
-        .page.active { display: block; }
-        #guide-container {
-            width: 100%; aspect-ratio: 3 / 4; background-color: #e9ecef;
-            border: 2px dashed #ced4da; border-radius: 12px;
-            position: relative; overflow: hidden; user-select: none; margin: 20px 0;
-        }
-        #user-image, #overlay-canvas, #guideline-svg {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            max-width: 100%; max-height: 100%;
-            height: auto; width: 80%;
-        }
-        #user-image { z-index: 10; cursor: grab; }
-        #user-image:active { cursor: grabbing; }
-        #guideline-svg { z-index: 20; pointer-events: none; }
-        #overlay-canvas { z-index: 30; pointer-events: none; }
-        #guideline-svg .draggable-line {
-            pointer-events: all;
-            cursor: ns-resize;
-            stroke-width: 8px;
-            stroke: rgba(0,0,0,0);
-        }
-        .sliders {
-            margin-top: 20px; padding: 20px;
-            background-color: #f8f9fa; border-radius: 8px;
-        }
-        .slider-group {
-            display: flex; align-items: center;
-            gap: 15px; margin-bottom: 15px;
-        }
-        .slider-group label { font-size: 14px; width: 100px; text-align: left;}
-        input[type="range"] { flex-grow: 1; }
-        .description-text {
-            font-size: 0.8em; color: #888; text-align: left;
-            padding-left: 10px; border-left: 3px solid #e0e0e0;
-        }
-        .question { margin-bottom: 30px; text-align: left; }
-        .question p { font-weight: 500; margin-bottom: 15px; }
-        .options { display: flex; flex-direction: column; gap: 10px; }
-        .result-card {
-            background-color: var(--secondary-color); border-radius: 12px;
-            padding: 20px; margin-bottom: 15px; text-align: left;
-        }
-        .result-card h3 { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 15px;}
-        .result-card ul { padding-left: 20px; margin: 0; list-style-type: none;}
-        .result-card li { margin-bottom: 12px; }
-        .photo-basis {
-            font-size: 0.8em;
-            color: #666;
-            display: block;
-            padding-left: 10px;
-            border-left: 2px solid var(--primary-color);
-            margin-top: 5px;
-        }
-        #loader {
-            border: 8px solid #f3f3f3; border-radius: 50%;
-            border-top: 8px solid var(--primary-color);
-            width: 60px; height: 60px;
-            animation: spin 1s linear infinite; margin: 30px auto; display: none;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-</head>
-<body>
-
-    <div class="main-container">
-
-        <div id="start-page" class="page active">
-            <h1>眉완성</h1>
-            <p><strong>내 얼굴에 딱 맞는 인생 눈썹을 찾아보세요!</strong><br>두 가지 방법 중 하나를 선택해 진단을 시작할 수 있습니다.</p>
-            <button class="btn" onclick="showPage('photo-page')">📸 사진으로 분석하기</button>
-            <button class="btn" onclick="showPage('quiz-page')">✍️ 설문으로 진단하기</button>
-            <p style="font-size: 0.8em; color: #888; margin-top: 20px;">
-                사진은 서버에 저장되지 않으며, 분석은 모두 사용자의 기기에서만 이루어집니다.
-            </p>
-        </div>
-
-        <div id="photo-page" class="page">
-            <h2>사진으로 분석하기</h2>
-            <p>정면을 바라보는 선명한 사진을 올리고<br>가이드라인에 맞춰 얼굴을 조정해주세요.</p>
-            
-            <label for="file-input" class="btn secondary">🖼️ 사진 선택</label>
-            <input type="file" id="file-input" accept="image/*" style="display:none;">
-
-            <div id="guide-container">
-                <svg id="guideline-svg" viewbox="0 0 300 400" preserveAspectRatio="xMidYMid meet">
-                    <ellipse id="oval-guide" cx="150" cy="200" rx="100" ry="130" stroke="rgba(0,0,0,0.5)" stroke-width="2" stroke-dasharray="5,5" fill="none" />
-                    <line id="red-line" x1="50" y1="200" x2="250" y2="200" stroke="red" stroke-width="1.5" />
-                    <line id="blue-line" x1="150" y1="70" x2="150" y2="330" stroke="blue" stroke-width="1.5" />
-                    <line class="green-line" x1="116.67" y1="70" x2="116.67" y2="330" stroke="green" stroke-width="1" />
-                    <line class="green-line" x1="183.33" y1="70" x2="183.33" y2="330" stroke="green" stroke-width="1" />
-                    <line id="draggable-line-visual" x1="50" y1="220" x2="250" y2="220" stroke="skyblue" stroke-width="2" />
-                    <line class="draggable-line" id="draggable-line-handle" x1="50" y1="220" x2="250" y2="220" />
-                </svg>
-                <img id="user-image" src="" alt="User's face" style="display:none;">
-                <canvas id="overlay-canvas"></canvas>
-            </div>
-
-            <div id="photo-controls" style="display:none;">
-                <div class="sliders">
-                    <p class="description-text"><strong>사진 조절</strong></p>
-                    <div class="slider-group">
-                        <label for="size-slider">사진 크기</label>
-                        <input type="range" id="size-slider" min="10" max="250" value="80">
-                    </div>
-                    <div class="slider-group">
-                        <label for="opacity-slider">사진 투명도</label>
-                        <input type="range" id="opacity-slider" min="0" max="1" step="0.05" value="0.7">
-                    </div>
-                </div>
-                <div class="sliders">
-                    <p class="description-text"><strong>가이드라인 조절</strong></p>
-                    <div class="slider-group">
-                        <label for="guideline-size-slider">전체 크기</label>
-                        <input type="range" id="guideline-size-slider" min="50" max="150" value="100">
-                    </div>
-                    <p class="description-text" style="font-size:0.75em; margin-top: 5px;">
-                        가이드라인을 조절하여 얼굴 비율을 직접 확인해보세요.
-                    </p>
-                </div>
-            </div>
-            
-            <p class="description-text" style="margin-top:15px; font-size: 0.9em;">
-                <strong>동그란 얼굴:</strong> 얼굴의 가로와 세로 길이가 1:1.1 정도로 비슷<br>
-                <strong>타원형 얼굴:</strong> 가로보다 세로 길이가 1:1.4 이상으로 훨씬 김
-            </p>
-            
-            <div id="loader"></div>
-            <button class="btn" id="analyze-btn" onclick="analyzePhoto()" style="display:none;">결과 분석하기</button>
-            <button class="btn secondary" onclick="showPage('start-page')">뒤로 가기</button>
-        </div>
-
-        <div id="quiz-page" class="page">
-            <h2>설문으로 진단하기</h2>
-            <p>아래 질문에 답하여<br>자신에게 꼭 맞는 눈썹 스타일을 찾아보세요.</p>
-            <form id="quiz-form">
-                <div class="question">
-                    <p>1. 내 얼굴의 특징은 어디에 가깝나요?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q1" value="A"> 얼굴이 길거나, 눈과 눈썹 사이가 멀다.</label>
-                        <label><input type="radio" name="q1" value="B"> 얼굴이 짧거나, 눈과 눈썹 사이가 좁다.</label>
-                    </div>
-                </div>
-                <div class="question">
-                    <p>2. 나의 전체적인 인상이나 얼굴 라인은?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q2" value="C"> 얼굴선이 둥글고, 청순하고 부드러운 인상이다.</label>
-                        <label><input type="radio" name="q2" value="D"> 얼굴선이 각지고, 세련되고 또렷한 인상이다.</label>
-                    </div>
-                </div>
-                <div class="question">
-                    <p>3. 내 눈 모양은 어떤가요?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q3" value="E"> 눈이 전체적으로 동그란 편이다.</label>
-                        <label><input type="radio" name="q3" value="F"> 눈이 가로로 긴 편이다.</label>
-                    </div>
-                </div>
-                <div class="question">
-                    <p>4. 내 이목구비는 얼굴 중앙에 모여있는 편인가요?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q4" value="A"> 이목구비가 중앙에 모여있고, 눈 사이가 가깝다 (내심안).</label>
-                        <label><input type="radio" name="q4" value="B"> 이목구비가 넓게 퍼져있고, 눈 사이가 멀다 (외심안).</label>
-                    </div>
-                </div>
-                <div class="question">
-                    <p>5. 내 얼굴의 가로/세로 비율은 어떤가요?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q5" value="C"> 가로 대비 세로 길이가 짧은 동그란 얼굴형이다.</label>
-                        <label><input type="radio" name="q5" value="D"> 가로 대비 세로 길이가 긴 타원형/긴 얼굴형이다.</label>
-                    </div>
-                </div>
-                <div class="question">
-                    <p>6. 나의 미간 너비와 추구하는 인상은?</p>
-                    <div class="options">
-                        <label><input type="radio" name="q6" value="E"> 미간이 좁은 편이며, 부드러운 인상을 원한다.</label>
-                        <label><input type="radio" name="q6" value="F"> 미간이 넓은 편이며, 또렷한 인상을 원한다.</label>
-                    </div>
-                </div>
-                <button type="button" class="btn" onclick="analyzeQuiz()">결과 확인하기</button>
-                <button type="button" class="btn secondary" onclick="showPage('start-page')">뒤로 가기</button>
-            </form>
-        </div>
-
-        <div id="result-page" class="page">
-            <h2>진단 결과 🧐</h2>
-            <p>당신에게 어울리는 최고의 눈썹 스타일을 추천합니다!</p>
-            <div id="result-content"></div>
-            <button class="btn" onclick="showPage('start-page')">다시 하기</button>
-        </div>
-        
-    </div>
-
 <script>
     const pages = document.querySelectorAll('.page');
     const loader = document.getElementById('loader');
@@ -277,14 +20,13 @@
             if(photoControls) photoControls.style.display = 'none';
             if(analyzeBtn) analyzeBtn.style.display = 'none';
             if(canvas) { canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); }
-            // 퀴즈 페이지 초기화
             const quizForm = document.getElementById('quiz-form');
             if(quizForm) quizForm.reset();
         }
     }
 
     async function loadModels() {
-        const MODEL_URL = './models'; // 모델 경로 확인 (로컬에서 실행 시)
+        const MODEL_URL = './models';
         try {
             await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
             await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -305,7 +47,7 @@
 
     if (fileInput) {
         fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
+            const file = event.target.files()[0];
             if (!file) return;
             document.getElementById('overlay-canvas').getContext('2d').clearRect(0,0,300,400);
             const reader = new FileReader();
@@ -316,8 +58,8 @@
                 if(analyzeBtn) analyzeBtn.style.display = 'block';
                 document.getElementById('size-slider').value = 80;
                 userImage.style.width = '80%';
-                userImage.style.left = '50%'; // 중앙으로 초기화
-                userImage.style.top = '50%';  // 중앙으로 초기화
+                userImage.style.left = '50%';
+                userImage.style.top = '50%';
                 document.getElementById('opacity-slider').value = 0.7;
                 userImage.style.opacity = '0.7';
                 document.getElementById('guideline-size-slider').value = 100;
@@ -335,7 +77,7 @@
     if (opacitySlider) {
         opacitySlider.addEventListener('input', (e) => { if(userImage) userImage.style.opacity = e.target.value; });
     }
-    
+
     const guidelineSVG = document.getElementById('guideline-svg');
     const ovalGuide = document.getElementById('oval-guide');
     const redLine = document.getElementById('red-line');
@@ -345,33 +87,32 @@
     const draggableLineHandle = document.getElementById('draggable-line-handle');
     const guidelineSizeSlider = document.getElementById('guideline-size-slider');
     const IDEAL_ASPECT_RATIO = 1.3;
-    
+
     function updateGuidelineSize(sizePercent) {
         const svgWidth = 300;
-        const baseRx = svgWidth / 3; 
+        const baseRx = svgWidth / 3;
         const rx = baseRx * (sizePercent / 100);
-        const ry = rx * IDEAL_ASPECT_RATIO; // 타원형 가이드라인의 y축 반지름
+        const ry = rx * IDEAL_ASPECT_RATIO;
 
         ovalGuide.setAttribute('rx', rx);
         ovalGuide.setAttribute('ry', ry);
-        
+
         redLine.setAttribute('x1', 150 - rx);
         redLine.setAttribute('x2', 150 + rx);
-        // blueLine은 세로선이므로 y1, y2만 변화
         blueLine.setAttribute('y1', 200 - ry);
         blueLine.setAttribute('y2', 200 + ry);
-        
+
         const sectionWidth = (rx * 2) / 3;
         const startX = 150 - rx;
-        greenLines[0].setAttribute('x1', startX + sectionWidth);
-        greenLines[0].setAttribute('x2', startX + sectionWidth);
-        greenLines[0].setAttribute('y1', 200 - ry); // greenLines의 y1, y2도 ry에 맞게 조정
-        greenLines[0].setAttribute('y2', 200 + ry);
-        
-        greenLines[1].setAttribute('x1', startX + (sectionWidth * 2));
-        greenLines[1].setAttribute('x2', startX + (sectionWidth * 2));
-        greenLines[1].setAttribute('y1', 200 - ry); // greenLines의 y1, y2도 ry에 맞게 조정
-        greenLines[1].setAttribute('y2', 200 + ry);
+        greenLines()[0].setAttribute('x1', startX + sectionWidth);
+        greenLines()[0].setAttribute('x2', startX + sectionWidth);
+        greenLines()[0].setAttribute('y1', 200 - ry);
+        greenLines()[0].setAttribute('y2', 200 + ry);
+
+        greenLines()[1].setAttribute('x1', startX + (sectionWidth * 2));
+        greenLines()[1].setAttribute('x2', startX + (sectionWidth * 2));
+        greenLines()[1].setAttribute('y1', 200 - ry);
+        greenLines()[1].setAttribute('y2', 200 + ry);
 
         draggableLineVisual.setAttribute('x1', 150 - rx);
         draggableLineVisual.setAttribute('x2', 150 + rx);
@@ -385,23 +126,22 @@
         });
     }
     updateGuidelineSize(100);
-    
+
     let isImageDragging = false;
     let isLineDragging = false;
     let startX_drag, startY_drag, initialLeft, initialTop;
-    let initialLineY; // 드래그 가능한 선의 초기 Y 위치
-    
+    let initialLineY;
+
     if (guideContainer) {
         guideContainer.addEventListener('mousedown', e => {
             if (e.target.id === 'draggable-line-handle') {
                 isLineDragging = true;
                 initialLineY = parseFloat(draggableLineVisual.getAttribute('y1'));
-                // SVG의 좌표 시스템을 사용하여 마우스 위치를 가져옴
                 const CTM = guidelineSVG.getScreenCTM().inverse();
                 const pt = guidelineSVG.createSVGPoint();
                 pt.x = e.clientX;
                 pt.y = e.clientY;
-                startY_drag = pt.matrixTransform(CTM).y; // SVG 좌표계에서의 Y 시작점
+                startY_drag = pt.matrixTransform(CTM).y;
                 return;
             }
             if (!userImage.src || userImage.style.display === 'none') return;
@@ -421,14 +161,13 @@
             pt.x = e.clientX;
             pt.y = e.clientY;
             const svgP = pt.matrixTransform(CTM);
-            
-            // 드래그 가능한 선의 이동 제한 (가이드라인 내)
+
             const ovalRy = parseFloat(ovalGuide.getAttribute('ry'));
             const minY = 200 - ovalRy;
             const maxY = 200 + ovalRy;
             let newY = initialLineY + (svgP.y - startY_drag);
-            
-            newY = Math.max(minY, Math.min(maxY, newY)); // Y축 이동 제한
+
+            newY = Math.max(minY, Math.min(maxY, newY));
 
             draggableLineVisual.setAttribute('y1', newY);
             draggableLineVisual.setAttribute('y2', newY);
@@ -437,18 +176,6 @@
             return;
         }
         if (isImageDragging && userImage) {
-            // 이미지 중앙 기준이 아닌, 실제 offsetLeft/Top 기준으로 계산
-            // container의 상대적인 위치를 고려하여 계산해야 정확함
-            const containerRect = guideContainer.getBoundingClientRect();
-            const newLeft = initialLeft + (e.clientX - startX_drag);
-            const newTop = initialTop + (e.clientY - startY_drag);
-
-            // 이미지 중앙을 컨테이너 중앙에 유지하기 위한 transform: translate(-50%, -50%) 때문에
-            // offsetLeft/Top은 실제 CSS left/top 값과 다를 수 있음.
-            // 대신 CSS transform 속성을 직접 조절하는 것이 더 안정적일 수 있습니다.
-            // 여기서는 기존 방식을 유지하되, 필요하면 CSS transform으로 변경 고려
-
-            // 현재 translateX, translateY 값을 가져와서 추가적으로 이동
             const transform = window.getComputedStyle(userImage).transform;
             const matrix = new DOMMatrix(transform);
             const currentTranslateX = matrix.m41;
@@ -458,11 +185,8 @@
             const newTranslateY = currentTranslateY + (e.clientY - startY_drag);
 
             userImage.style.transform = `translate(-50%, -50%) translate(${newTranslateX}px, ${newTranslateY}px)`;
-            startX_drag = e.clientX; // 다음 움직임을 위해 현재 마우스 위치 업데이트
+            startX_drag = e.clientX;
             startY_drag = e.clientY;
-
-            // userImage.style.left = `${initialLeft + (e.clientX - startX_drag)}px`;
-            // userImage.style.top = `${initialTop + (e.clientY - startY_drag)}px`;
         }
     });
     window.addEventListener('mouseup', () => {
@@ -472,15 +196,14 @@
         if(isImageDragging) {
             isImageDragging = false;
             if(userImage) userImage.style.cursor = 'grab';
-            // 이미지 드래그가 끝나면 CSS transform 값을 다시 left/top으로 변환하여 초기화
             const transform = window.getComputedStyle(userImage).transform;
             const matrix = new DOMMatrix(transform);
             const translateX = matrix.m41;
             const translateY = matrix.m42;
-            
+
             userImage.style.left = `calc(50% + ${translateX}px)`;
             userImage.style.top = `calc(50% + ${translateY}px)`;
-            userImage.style.transform = 'translate(-50%, -50%)'; // translate(-50%, -50%)는 유지
+            userImage.style.transform = 'translate(-50%, -50%)';
         }
     });
 
@@ -489,25 +212,23 @@
         if (!userImage.src || userImage.style.display === 'none') { alert("먼저 사진을 선택해주세요."); return; }
         if(loader) loader.style.display = 'block';
         if(analyzeBtn) analyzeBtn.style.display = 'none';
-        
+
         try {
             const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks();
-            
+
             if (!detection) {
                 if(loader) loader.style.display = 'none';
                 if(analyzeBtn) analyzeBtn.style.display = 'block';
                 alert("얼굴을 인식할 수 없습니다. 더 선명하고 정면을 바라보는 사진을 사용해주세요.");
                 return;
             }
-            
+
             const canvas = document.getElementById('overlay-canvas');
             const ctx = canvas.getContext('2d');
-            
-            // 이미지의 현재 렌더링된 크기와 위치를 가져옴
+
             const imageRect = userImage.getBoundingClientRect();
             const containerRect = guideContainer.getBoundingClientRect();
 
-            // 캔버스 크기 및 위치 조정
             canvas.style.top = `${imageRect.top - containerRect.top}px`;
             canvas.style.left = `${imageRect.left - containerRect.left}px`;
             canvas.style.width = `${imageRect.width}px`;
@@ -517,7 +238,7 @@
 
             const displaySize = { width: imageRect.width, height: imageRect.height };
             const resizedDetections = faceapi.resizeResults(detection, displaySize);
-            
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
@@ -525,101 +246,44 @@
             const jaw = landmarks.getJawOutline();
             const leftEye = landmarks.getLeftEye();
             const rightEye = landmarks.getRightEye();
-            
-            // 얼굴 비율 (가로/세로)
-            const faceHeight = jaw[8].y - (jaw[0].y + jaw[16].y) / 2; // 턱 중간점 - 턱 양 끝 평균 Y
-            const faceWidth = jaw[16].x - jaw[0].x; // 턱 양 끝 가로 길이
+            const leftBrow = landmarks.getLeftEyeBrow();
+            const rightBrow = landmarks.getRightEyeBrow();
+            const nose = landmarks.getNose();
+
+            // 얼굴 비율
+            const faceHeight = jaw()[8].y - (jaw()[0].y + jaw()[16].y) / 2;
+            const faceWidth = jaw()[16].x - jaw()[0].x;
             const aspectRatio = faceHeight / faceWidth;
 
-            // 눈과 눈썹 사이 거리 (step1)
-            const leftEyeCenterY = (leftEye[1].y + leftEye[2].y + leftEye[4].y + leftEye[5].y) / 4;
-            const leftEyebrowY = (landmarks.getLeftEyeBrow()[0].y + landmarks.getLeftEyeBrow()[1].y + landmarks.getLeftEyeBrow()[2].y + landmarks.getLeftEyeBrow()[3].y + landmarks.getLeftEyeBrow()[4].y) / 5;
-            const eyeToEyebrowDistance = leftEyeCenterY - leftEyebrowY;
-            const leftEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2;
-            const normalizedDistance = eyeToEyebrowDistance / leftEyeHeight;
-            
-            let step1_result;
-            // 김혜수 타입(A)이 너무 많이 나오는 문제 해결
-            // 눈썹과 눈 사이 거리가 너무 가까우면 'B' (얼굴이 짧거나, 눈과 눈썹 사이가 좁다)로 유도
-            // 기존 'normalizedDistance > 1.0' 조건은 눈썹이 높은 경우를 주로 잡음
-            // 기준점을 조정하여 'A' (얼굴이 길거나, 눈과 눈썹 사이가 멀다)가 덜 나오도록
-            if (normalizedDistance > 0.8) { // 1.0 -> 0.8로 기준 완화 (눈썹이 많이 높지 않아도 A)
-                step1_result = 'A';
-            } else {
-                step1_result = 'B';
-            }
-            
-            // 얼굴선 각도 (step2)
-            const p1 = jaw[2], p2 = jaw[4], p3 = jaw[8]; // 턱선 랜드마크 활용
+            // 이마 넓이 (눈썹 ~ 헤어라인 추정) - 간접적인 판단
+            const browTopY = Math.min(leftBrow()[0].y, rightBrow()[0].y);
+            const eyeTopY = Math.min(leftEye()[1].y, rightEye()[1].y);
+            const foreheadRatio = (eyeTopY - browTopY) / faceHeight; // 비율로 판단
+
+            // 턱 모양 (각도)
+            const p1 = jaw()[2], p2 = jaw()[4], p3 = jaw()[8];
             const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
             const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
             const dotProduct = v1.x * v2.x + v1.y * v2.y;
             const magnitude1 = Math.sqrt(v1.x**2 + v1.y**2), magnitude2 = Math.sqrt(v2.x**2 + v2.y**2);
             const jawAngle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
-            
-            let step2_result;
-            // 턱 각도가 145도 미만이면 'D'(각진 인상), 이상이면 'C'(부드러운 인상)
-            // 김혜수 타입(D)이 많이 나오는 경우, 각진 얼굴 기준을 좀 더 엄격하게 (높은 각도)
-            if (jawAngle < 140) { // 145 -> 140으로 기준 강화 (더 각져야 D)
-                step2_result = 'D';
-            } else {
-                step2_result = 'C';
-            }
-            
-            // 눈 모양 (step3)
-            const leftEyeWidth = leftEye[3].x - leftEye[0].x;
-            const step3_result = (leftEyeWidth / leftEyeHeight < 3.0) ? 'E' : 'F'; // 눈의 가로 대비 세로 비율
 
-            // 이목구비 집중도 (step4)
-            const noseBridge = landmarks.getNose()[0]; // 콧대 시작점 (미간)
-            const eyeDistance = Math.sqrt(Math.pow(rightEye[0].x - leftEye[3].x, 2) + Math.pow(rightEye[0].y - leftEye[3].y, 2)); // 양쪽 눈 사이 거리
-            const faceWidthAtEyes = landmarks.getRightEye()[3].x - landmarks.getLeftEye()[0].x;
-            const eyeToNoseRatio = eyeDistance / faceWidthAtEyes; // 눈 사이 거리 / 눈 폭
-            
-            let step4_result;
-            // 이목구비가 중앙에 모여있는지 (내심안) vs 퍼져있는지 (외심안)
-            // 기존 'eyeSpreadRatio < 0.03'이 너무 넓은 범위의 'A'를 유도할 수 있음.
-            // 눈 사이 거리를 기준으로 더 명확하게 분류
-            if (eyeToNoseRatio < 0.9) { // 이 비율이 작으면 눈이 중앙에 가깝게 모여있음
-                step4_result = 'A'; // 내심안
-            } else {
-                step4_result = 'B'; // 외심안
-            }
-            
-            // 얼굴 가로/세로 비율 (step5) - aspectRatio 재활용
-            // 동그란 얼굴형과 긴 얼굴형의 경계 조정
-            let step5_result;
-            if (aspectRatio < 1.25) { // 1.2 -> 1.25로 조정 (조금 더 길어도 동그란 얼굴로)
-                step5_result = 'C';
-            } else {
-                step5_result = 'D';
-            }
-            
-            // 미간 너비와 인상 (step6)
-            // step4와 step2 결과를 기반으로 하되, 미간 너비에 더 집중
-            // 'E' (미간 좁고 부드러운 인상) vs 'F' (미간 넓고 또렷한 인상)
-            const interEyeDistance = landmarks.getRightEye()[0].x - landmarks.getLeftEye()[3].x;
-            const noseWidth = landmarks.getNose()[3].x - landmarks.getNose()[2].x; // 콧볼 너비
-            const browDistanceRatio = interEyeDistance / noseWidth; // 미간 대비 콧볼 너비
+            // 눈 사이 거리 (미간)
+            const interEyeDistance = rightEye()[0].x - leftEye()[3].x;
+            const normalizedInterEyeDistance = interEyeDistance / faceWidth; // 얼굴 너비 대비
 
-            let step6_result;
-            // browDistanceRatio 기준을 조정하여 밸런스 맞춤
-            if (browDistanceRatio < 1.0) { // 이 비율이 작으면 미간이 좁은 편
-                step6_result = 'E';
-            } else {
-                step6_result = 'F';
-            }
-
-
-            const analysisResult = { 
-                step1: step1_result, 
-                step2: step2_result, 
-                step3: step3_result, 
-                step4: step4_result, 
-                step5: step5_result, 
-                step6: step6_result 
+            const analysisResult = {
+                step1: (foreheadRatio < 0.15) ? 'B' : 'A', // 이마가 좁다 vs 넓다 (임계값 조정 가능)
+                step2: (jawAngle < 140) ? 'D' : 'C', // 턱이 각짐 vs 둥<0xEB><0x8A><0x8C>
+                step3: (leftEye()[3].x - leftEye()[0].x) / ((leftEye()[4].y + leftEye()[5].y) / 2 - (leftEye()[1].y + leftEye()[2].y) / 2) < 3.0 ? 'E' : 'F', // 눈이 둥<0xEA><0xB8><0xB3> vs 김
+                step4: (normalizedInterEyeDistance < 0.2) ? 'A' : 'B', // 눈 사이 좁음 vs 넓음 (임계값 조정 가능)
+                step5: (aspectRatio < 1.25) ? 'C' : 'D', // 얼굴 동그람 vs 김
+                step6: (normalizedInterEyeDistance < 0.22 && foreheadRatio > 0.18) ? 'E' : 'F', // 미간 좁고 이마 넓음 -> 부드러운 인상 (임계값 조정 가능)
+                forehead: (foreheadRatio < 0.15) ? '좁은' : '넓은',
+                jaw: (jawAngle < 140) ? '각진' : '둥근',
+                eyeSpacing: (normalizedInterEyeDistance < 0.2) ? '좁은' : '넓은'
             };
-            
+
             displayResults(analysisResult, true);
             showPage('result-page');
 
@@ -654,44 +318,41 @@
         const content = document.getElementById('result-content');
         if (!content) return;
 
-        // 1. 최종 유형(Type) 결정 로직
         let finalType;
         if (analysis.step2 === 'D' && analysis.step1 === 'A') finalType = 'A';
         else if (analysis.step2 === 'D' && analysis.step1 === 'B') finalType = 'B';
         else if (analysis.step2 === 'C' && analysis.step1 === 'A') finalType = 'C';
         else finalType = 'D';
 
-        // 2. 각 타입별 정보 (타이틀, 설명, 예시 연예인, 이미지 경로)
         const typeInfo = {
             'A': {
                 title: "Type A : 세련된 파워 셀럽형",
                 description: "또렷한 인상을 주는 각진 모양과 풍성하고 도톰한 눈썹의 조합입니다. 자신감 있고 카리스마 넘치는 이미지를 연출하기에 좋습니다. 눈썹의 전체적인 길이는 아래 상세 가이드에서 당신의 얼굴 비율에 맞게 조절하여, 전체적인 인상의 완성도를 높일 수 있습니다.",
-                celebrities: ["김혜수", "한소희"], // 배열로 변경
+                celebrities: ["김혜수", "한소희"],
                 image: "https://image.isplus.com/data/isp/image/2025/03/20/isp20250320000163.800x.0.jpg"
             },
             'B': {
                 title: "Type B : 시크한 도시 모델형",
                 description: "날카롭고 세련된 느낌의 각진 모양과 얇고 정교한 눈썹의 조합입니다. 시크하고 도회적인 분위기를 연출하는 데 효과적입니다. 눈썹의 전체적인 길이는 아래 상세 가이드에서 당신의 얼굴 비율에 맞게 조절하여, 전체적인 인상의 완성도를 높일 수 있습니다.",
-                celebrities: ["김서형", "아이유"], // 배열로 변경
+                celebrities: ["김서형", "아이유"],
                 image: "https://www.elle.co.kr/resources_old/online/org_online_image/el/a15eacb9-d825-4655-9264-24e5b93b58c9.jpg"
             },
             'C': {
                 title: "Type C : 부드러운 첫사랑형",
                 description: "선하고 부드러운 인상을 주는 둥근 모양과 자연스럽고 도톰한 눈썹의 조합입니다. 청순하고 어려 보이는 이미지를 만드는 데 가장 이상적입니다. 눈썹의 전체적인 길이는 아래 상세 가이드에서 당신의 얼굴 비율에 맞게 조절하여, 전체적인 인상의 완성도를 높일 수 있습니다.",
-                celebrities: ["제니(블랙핑크)", "임윤아"], // 배열로 변경
+                celebrities: ["제니(블랙핑크)", "임윤아"],
                 image: "https://t1.daumcdn.net/news/202504/18/inews24/20250418141440222zwyv.jpg"
             },
             'D': {
                 title: "Type D : 단아한 클래식형",
                 description: "부드러운 곡선 모양과 깔끔하고 얇은 눈썹의 조합입니다. 단아하고 클래식한 분위기를 연출하며, 가장 실패 확률이 적은 스타일입니다. 눈썹의 전체적인 길이는 아래 상세 가이드에서 당신의 얼굴 비율에 맞게 조절하여, 전체적인 인상의 완성도를 높일 수 있습니다.",
-                celebrities: ["김고은", "송혜교"], // 배열로 변경
+                celebrities: ["김고은", "송혜교"],
                 image: "https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1HC3K5.img?w=650&h=865&m=6&x=172&y=224&s=289&d=289"
             }
         };
 
-        const currentType = typeInfo[finalType];
-        
-        // 상세 가이드 텍스트
+        const currentType = typeInfo()[finalType];
+
         const detailTexts = {
             shape: analysis.step2 === 'D' ? '산과 각을 살린' : '부드러운 곡선',
             thickness: analysis.step1 === 'A' ? '도톰한' : '얇은',
@@ -699,15 +360,27 @@
             detail: `눈썹 ${analysis.step4 === 'A' ? '산을 길게, 꼬리를 짧게' : '산을 짧게, 꼬리를 길게'}, ${analysis.step6 === 'E' ? '앞머리는 옅게 표현' : '앞머리 결을 살려 표현'}`
         };
 
-        // 최종 결과 HTML 생성
+        let analysisDetailsHTML = '';
+        if (fromPhoto) {
+            analysisDetailsHTML = `
+                <h4>사진 분석 결과</h4>
+                <ul>
+                    <li>이마: ${analysis.forehead} 편입니다.</li>
+                    <li>턱: ${analysis.jaw} 편입니다.</li>
+                    <li>눈 사이 간격: ${analysis.eyeSpacing} 편입니다.</li>
+                    </ul>
+                <hr style="border-top: 1px dashed #ccc; margin: 15px 0;">
+            `;
+        }
+
         const resultHTML = `
             <div class="result-card">
-                <h3>${currentType.title}</h3>
-                <p style="font-weight: 500;">${currentType.description}</p>
-                
+                <h3>${currentType().title}</h3>
+                <p style="font-weight: 500;">${currentType().description}</p>
+                ${analysisDetailsHTML}
                 <div style="margin: 20px 0;">
-                    <img src="${currentType.image}" alt="${currentType.title}" style="width: 100%; border-radius: 8px;">
-                    <p style="font-size: 0.9em; color: #555; margin-top: 10px;">(예시: ${currentType.celebrities.join(', ')} 스타일)</p>
+                    <img src="${currentType().image}" alt="${currentType().title}" style="width: 100%; border-radius: 8px;">
+                    <p style="font-size: 0.9em; color: #555; margin-top: 10px;">(예시: ${currentType().celebrities.join(', ')} 스타일)</p>
                 </div>
 
                 <h4>당신을 위한 상세 가이드</h4>
@@ -723,5 +396,3 @@
         content.innerHTML = resultHTML;
     }
 </script>
-</body>
-</html>
