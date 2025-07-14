@@ -287,7 +287,7 @@
         try {
             await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
             await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-            await faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL); // 성별/나이 인식 모델 추가
+            await faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL); // 성별/나이 인식 모델 추가 (필수)
             modelsLoaded = true;
             console.log("모델 로딩 완료!");
         } catch (error) {
@@ -512,6 +512,8 @@
             const nose = landmarks.getNose();
 
             // 성별 인식 결과
+            // Face-api.js의 gender 인식은 확률 기반이며, 사진 각도나 선명도에 따라 오차가 있을 수 있습니다.
+            // 모델 자체의 한계로 인해 100% 정확한 인식은 어렵습니다.
             const gender = detection.gender; // 'male' 또는 'female'
             const genderText = (gender === 'male') ? '남성' : '여성';
 
@@ -521,30 +523,35 @@
             const faceWidth = jaw[16].x - jaw[0].x;
             const aspectRatio = faceHeight / faceWidth;
 
-            // 이마 넓이 개선 (눈썹 위~얼굴 상단 추정)
-            // 눈썹 중앙점 평균 Y
-            const browAverageY = (leftBrow[2].y + rightBrow[2].y) / 2;
-            // 코 끝 Y
-            const noseTipY = nose[5].y; 
-            // 얼굴의 최상단 추정 (눈썹과 코 끝 사이의 거리를 기반으로 상대적인 이마 높이 추정)
-            // (이마가 넓으면 눈썹과 코 끝 사이 거리에 비해 눈썹 위 얼굴 영역이 길다)
-            const topOfFaceY = landmarks.getNose()[0].y - (noseTipY - browAverageY) * 1.5; // 경험적 계수 조정
-            const foreheadHeight = browAverageY - topOfFaceY; // 이마 높이
+            // --- 이마 넓이 개선 ---
+            // 이마는 얼굴 랜드마크만으로 정확한 헤어라인을 알 수 없어 추정이 필요합니다.
+            // 눈썹 중앙점 Y와 코 상단(미간) Y를 기준으로 이마 높이를 추정합니다.
+            // 이마 높이 / 얼굴 전체 높이 비율로 넓이를 판단합니다.
+            const browAverageY = (leftBrow[2].y + rightBrow[2].y) / 2; // 눈썹 중앙 Y값
+            const noseTopY = nose[0].y; // 콧대 시작 (미간) Y
+            // 헤어라인을 직접 감지할 수 없으므로, 미간과 눈썹 사이 높이를 기준으로
+            // 대략적인 이마 상단 Y를 추정합니다. (경험적 계수 조정)
+            // 이 계수(예: 1.5)를 조절하여 이마 넓이 판단을 변경할 수 있습니다.
+            // 계수가 높으면 이마가 더 넓게, 낮으면 더 좁게 인식될 가능성이 높아집니다.
+            const estimatedTopFaceY = noseTopY - (noseTopY - browAverageY) * 1.5;
+            const foreheadHeight = browAverageY - estimatedTopFaceY; // 추정된 이마 높이
 
             let foreheadText = '평균적인';
-            if (foreheadHeight > 0) { // 유효한 값일 경우에만 판단
+            if (foreheadHeight > 0 && faceHeight > 0) { // 유효한 값일 경우에만 판단
                  const foreheadToFaceRatio = foreheadHeight / faceHeight; // 이마 높이 / 얼굴 전체 높이
-                if (foreheadToFaceRatio < 0.20) { // 남성/여성 얼굴 특징 고려하여 임계값 조정
+                // 아래 임계값을 조절하여 '좁은 이마'와 '넓은 이마'의 기준을 변경할 수 있습니다.
+                // 첫 번째 임계값(0.20): 이 값보다 작으면 '좁은 이마'로 판단 (작을수록 좁다고 판단하기 쉬움)
+                // 두 번째 임계값(0.28): 이 값보다 크면 '넓은 이마'로 판단 (클수록 넓다고 판단하기 쉬움)
+                if (foreheadToFaceRatio < 0.22) { // 0.20 -> 0.22로 조정 (좁은 이마 기준을 조금 더 높여, 넓지 않은 이마가 넓다고 나오는 것을 줄임)
                     foreheadText = '좁은';
-                } else if (foreheadToFaceRatio > 0.28) {
+                } else if (foreheadToFaceRatio > 0.32) { // 0.28 -> 0.32로 조정 (넓은 이마 기준을 조금 더 높여, 넓지 않은 이마가 넓다고 나오는 것을 줄임)
                     foreheadText = '넓은';
                 }
             }
 
 
-            // 턱 모양 (각도) 개선
-            // 턱선 각도 재계산 및 남성/여성 특징 고려
-            // 남성은 일반적으로 턱선이 더 각지고 뚜렷함
+            // --- 턱 모양 (각도) 개선 ---
+            // 턱선 각도 계산 로직은 동일하지만, 판단 임계값을 더 세밀하게 조정합니다.
             const p1 = jaw[2], p2 = jaw[4], p3 = jaw[8];
             const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
             const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
@@ -556,9 +563,13 @@
             }
             
             let jawText;
-            // 성별에 따라 턱 각도 임계값 조정 (남성이 여성보다 평균적으로 각도가 작음)
-            const angleThresholdHard = (gender === 'male') ? 135 : 140; // 남성이 더 낮은 각도에서 각진 것으로
-            const angleThresholdSoft = (gender === 'male') ? 150 : 155; // 남성이 더 낮은 각도에서 둥근 것으로
+            // 성별에 따라 턱 각도 임계값 조정 (남성이 여성보다 일반적으로 턱선이 더 각짐)
+            // '각진' 턱 판단 임계값: 이 값보다 작으면 '각진' 턱으로 판단. (작을수록 각진 턱으로 판단하기 쉬움)
+            // '둥근' 턱 판단 임계값: 이 값보다 크면 '둥근' 턱으로 판단. (클수록 둥근 턱으로 판단하기 쉬움)
+            // 남성 기준: 더 낮은 각도(예: 135도)부터 각진 것으로, 더 높은 각도(예: 150도)부터 둥근 것으로
+            // 여성 기준: 남성보다 각도 범위가 좁음 (덜 각지고 더 둥근 경향)
+            const angleThresholdHard = (gender === 'male') ? 135 : 140; // 이전과 동일
+            const angleThresholdSoft = (gender === 'male') ? 150 : 155; // 이전과 동일
 
             if (jawAngle < angleThresholdHard) {
                 jawText = '각지고 뚜렷한';
@@ -568,57 +579,90 @@
                 jawText = '평균적인';
             }
 
-            // 눈 사이 간격 (미간)
-            const interEyeDistance = rightEye[0].x - leftEye[3].x;
-            const eyeWidth = leftEye[3].x - leftEye[0].x;
-            const eyeSpacingRatio = interEyeDistance / eyeWidth;
-
-            let eyeSpacingText;
-            if (eyeSpacingRatio < 0.9) {
-                eyeSpacingText = '좁은';
-            } else if (eyeSpacingRatio > 1.1) {
-                eyeSpacingText = '넓은';
-            } else {
-                eyeSpacingText = '평균적인';
+            // --- 눈 모양 (가로 길이) 개선 ---
+            // 눈 가로 길이 / 눈 세로 높이 비율로 판단합니다.
+            // 이 비율이 높으면 가로로 긴 눈, 낮으면 둥근 눈입니다.
+            const leftEyeWidth = leftEye[3].x - leftEye[0].x; // 왼쪽 눈 가로 길이
+            const leftEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2; // 왼쪽 눈 세로 높이 (눈꺼풀 기준)
+            let eyeShapeRatio = 0;
+            if (leftEyeHeight > 0) {
+                 eyeShapeRatio = leftEyeWidth / leftEyeHeight;
             }
             
-            // 기존 step1~6 결과도 다시 계산 및 임계값 조정
+            let eyeShapeText;
+            // 이 임계값을 조절하여 '둥근 눈'과 '긴 눈'의 기준을 변경할 수 있습니다.
+            // 첫 번째 임계값(2.8): 이 값보다 작으면 '둥근 눈'으로 판단. (클수록 둥근 눈으로 판단하기 쉬움)
+            // 두 번째 임계값(3.5): 이 값보다 크면 '긴 눈'으로 판단. (작을수록 긴 눈으로 판단하기 쉬움)
+            if (eyeShapeRatio < 2.9) { // 2.8 -> 2.9 (이전보다 조금 더 길어야 '긴 눈'으로 판단되도록 기준 강화)
+                eyeShapeText = '둥근';
+            } else if (eyeShapeRatio > 3.6) { // 3.5 -> 3.6 (이전보다 더 길어야 '긴 눈'으로 판단되도록 기준 강화)
+                eyeShapeText = '가로로 긴';
+            } else {
+                eyeShapeText = '평균적인';
+            }
+            
+
+            // 눈과 눈썹 사이 거리 (step1)
             const leftEyeCenterY = (leftEye[1].y + leftEye[2].y + leftEye[4].y + leftEye[5].y) / 4;
             const leftEyebrowY = (landmarks.getLeftEyeBrow()[0].y + landmarks.getLeftEyeBrow()[1].y + landmarks.getLeftEyeBrow()[2].y + landmarks.getLeftEyeBrow()[3].y + landmarks.getLeftEyeBrow()[4].y) / 5;
             const eyeToEyebrowDistance = leftEyeCenterY - leftEyebrowY;
-            const leftEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2;
+            // 눈 높이 대비 눈썹 거리 비율
             const normalizedDistance = eyeToEyebrowDistance / leftEyeHeight;
-            const step1_result = (normalizedDistance > 0.7) ? 'A' : 'B'; // 0.8 -> 0.7로 조정 (A가 덜 나오도록)
+            // 이 임계값(0.7)을 조절하여 '눈과 눈썹 사이가 멀다'와 '좁다'의 기준을 변경할 수 있습니다.
+            // 값이 작을수록 '멀다(A)'로 판단하기 쉬워집니다.
+            const step1_result = (normalizedDistance > 0.7) ? 'A' : 'B';
 
-            const step2_result = (jawAngle < 140) ? 'D' : 'C'; // 턱 각도에 따라 (D:각진, C:둥근)
 
-            const step3_result = (eyeWidth / ((leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2) < 2.8) ? 'E' : 'F'; // 눈 가로/세로 비율 (E:둥근, F:긴) - 3.0 -> 2.8 조정
+            // 이목구비 집중도 (step4) - 미간 간격
+            const interEyeDistance = rightEye[0].x - leftEye[3].x; // 양쪽 눈 안쪽 끝 사이 거리
+            const oneEyeWidth = leftEye[3].x - leftEye[0].x; // 한쪽 눈의 가로 길이
+            // 미간 간격 / 한쪽 눈의 너비 비율
+            const eyeSpacingRatio = interEyeDistance / oneEyeWidth;
 
-            const step4_result = (eyeSpacingRatio < 0.9) ? 'A' : 'B'; // 이목구비 집중도 (A:모임, B:퍼짐)
-
-            const step5_result = (aspectRatio < 1.25) ? 'C' : 'D'; // 얼굴 가로/세로 비율 (C:동그람, D:김)
-
-            let step6_result;
-            // 미간 너비와 인상 (복합적 판단)
-            // step4 (이목구비 집중도), step2 (얼굴선)과 연관
-            if (step4_result === 'A' && step2_result === 'C') { // 미간 좁고 얼굴선 부드러움
-                step6_result = 'E'; // 미간 좁고 부드러운 인상
+            let eyeSpacingTextDetailed;
+            // 이 임계값을 조절하여 '좁은 미간'과 '넓은 미간'의 기준을 변경할 수 있습니다.
+            // 0.9보다 작으면 '좁은', 1.1보다 크면 '넓은'
+            if (eyeSpacingRatio < 0.9) {
+                eyeSpacingTextDetailed = '좁은';
+            } else if (eyeSpacingRatio > 1.1) {
+                eyeSpacingTextDetailed = '넓은';
             } else {
-                step6_result = 'F'; // 미간 넓거나 또렷한 인상
+                eyeSpacingTextDetailed = '평균적인';
+            }
+            const step4_result = (eyeSpacingRatio < 0.9) ? 'A' : 'B'; // 이목구비 집중도 (A:중앙에 모임, B:넓게 퍼짐)
+
+
+            // 얼굴 가로/세로 비율 (step5) - aspectRatio 재활용
+            // 이 임계값(1.25)을 조절하여 '동그란 얼굴형'과 '긴 얼굴형'의 기준을 변경할 수 있습니다.
+            // 값이 작을수록 '동그란 얼굴형(C)'으로 판단하기 쉬워집니다.
+            const step5_result = (aspectRatio < 1.25) ? 'C' : 'D';
+
+
+            // 미간 너비와 인상 (step6) - 복합적 판단
+            // step4 (이목구비 집중도)와 step2 (얼굴선) 결과를 활용하여 판단합니다.
+            let step6_result;
+            // 'E' (미간 좁고 부드러운 인상)으로 판단되는 조건:
+            // 이목구비가 중앙에 모여있고 (step4 'A'), 얼굴선이 둥글 때 (step2 'C').
+            // 이 조건을 강화/완화하려면 step4_result와 step2_result의 판단 임계값을 조절해야 합니다.
+            if (step4_result === 'A' && step2_result === 'C') { 
+                step6_result = 'E';
+            } else {
+                step6_result = 'F';
             }
 
 
             const analysisResult = { 
                 step1: step1_result, 
                 step2: step2_result, 
-                step3: step3_result, 
+                step3: (eyeShapeRatio < 2.9) ? 'E' : 'F', // 직접 eyeShapeRatio로 판단
                 step4: step4_result, 
                 step5: step5_result, 
                 step6: step6_result,
-                gender: genderText,     // 성별 추가
+                gender: genderText,
                 forehead: foreheadText,
                 jaw: jawText,
-                eyeSpacing: eyeSpacingText
+                eyeShape: eyeShapeText, // 새로 추가된 눈 모양 분석 텍스트
+                eyeSpacing: eyeSpacingTextDetailed // 상세 미간 간격 텍스트
             };
             
             displayResults(analysisResult, true);
@@ -708,9 +752,10 @@
                     <li>예상 성별: <strong>${analysis.gender}</strong></li>
                     <li>이마: <strong>${analysis.forehead}</strong> 편입니다.</li>
                     <li>턱: <strong>${analysis.jaw}</strong> 편입니다.</li>
+                    <li>눈 모양: <strong>${analysis.eyeShape}</strong> 편입니다.</li>
                     <li>미간 간격: <strong>${analysis.eyeSpacing}</strong> 편입니다.</li>
                     <li>얼굴 비율: 가로/세로 비율은 <strong>${analysis.step5 === 'C' ? '동그란 얼굴형에 가깝고' : '타원형/긴 얼굴형에 가깝습니다'}</strong>.</li>
-                    <li>눈과 눈썹 사이: <strong>${analysis.step1 === 'A' ? '눈과 눈썹 사이가 멀고' : '눈과 눈썹 사이가 좁고'}</strong>, <strong>${analysis.step3 === 'E' ? '눈은 동그란 편입니다' : '눈은 가로로 긴 편입니다'}</strong>.</li>
+                    <li>눈과 눈썹 사이: <strong>${analysis.step1 === 'A' ? '눈과 눈썹 사이가 멀고' : '눈과 눈썹 사이가 좁습니다'}</strong>.</li>
                 </ul>
                 <p class="photo-basis">※ 위 결과는 AI 분석에 기반한 것으로, 실제와 다를 수 있습니다.</p>
                 <hr style="border-top: 1px dashed #ccc; margin: 20px 0;">
