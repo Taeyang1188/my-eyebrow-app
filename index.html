@@ -346,10 +346,6 @@
     if (sizeSlider) {
         sizeSlider.addEventListener('input', (e) => { 
             if(userImage) userImage.style.width = `${e.target.value}%`; 
-            // 이미지 크기 변경 시 위치 재조정 (중앙 유지)
-            // userImage.style.left = '50%'; 
-            // userImage.style.top = '50%'; 
-            // userImage.style.transform = 'translate(-50%, -50%)';
         });
     }
     if (opacitySlider) {
@@ -452,14 +448,11 @@
             pt.y = e.clientY;
             const svgP = pt.matrixTransform(CTM); // 현재 마우스의 SVG 좌표
 
-            // 드래그 가능한 선의 이동 범위 제한
-            // 가이드라인 타원의 세로 반지름 (ry)을 이용하여 상하 이동 범위를 설정
             const ovalRy = parseFloat(ovalGuide.getAttribute('ry'));
-            const minY = 200 - ovalRy; // SVG 좌표계에서 타원 상단 Y
-            const maxY = 200 + ovalRy; // SVG 좌표계에서 타원 하단 Y
-            let newY = initialLineY + (svgP.y - startY_drag); // 새로운 Y 위치
+            const minY = 200 - ovalRy;
+            const maxY = 200 + ovalRy;
+            let newY = initialLineY + (svgP.y - startY_drag);
 
-            // 새로운 Y 위치가 가이드라인 범위 내에 있도록 클램프
             newY = Math.max(minY, Math.min(maxY, newY)); 
 
             draggableLineVisual.setAttribute('y1', newY);
@@ -470,43 +463,13 @@
         }
 
         if (isImageDragging && userImage) { // 이미지 드래그 로직
-            const dx = e.clientX - startX_drag; // x축 마우스 이동량
-            const dy = e.clientY - startY_drag; // y축 마우스 이동량
+            const dx = e.clientX - startX_drag;
+            const dy = e.clientY - startY_drag;
 
-            // 현재 이미지의 위치 (translate 값) 업데이트
             let newTranslateX = initialImageX + dx;
             let newTranslateY = initialImageY + dy;
-
-            // 이미지가 컨테이너 밖으로 나가지 않도록 제한
-            const containerRect = guideContainer.getBoundingClientRect();
-            const imageRect = userImage.getBoundingClientRect();
-            
-            // 이미지의 현재 중앙 위치 (CSS translate(-50%, -50%)를 고려한 실제 중앙)
-            const currentImgCenterX = containerRect.width / 2 + newTranslateX;
-            const currentImgCenterY = containerRect.height / 2 + newTranslateY;
-
-            // 이미지가 컨테이너 안에 완전히 들어오도록 제한
-            // 이미지의 절반 너비/높이
-            const imgHalfWidth = imageRect.width / 2;
-            const imgHalfHeight = imageRect.height / 2;
-
-            // 컨테이너의 중앙을 기준으로 이미지의 최대/최소 translate 값 계산
-            const maxTranslateX = (containerRect.width / 2) - imgHalfWidth;
-            const minTranslateX = -((containerRect.width / 2) - imgHalfWidth);
-            const maxTranslateY = (containerRect.height / 2) - imgHalfHeight;
-            const minTranslateY = -((containerRect.height / 2) - imgHalfHeight);
-
-            // newTranslateX, newTranslateY가 제한 범위 내에 있도록 조정
-            newTranslateX = Math.max(minTranslateX, Math.min(maxTranslateX, newTranslateX));
-            newTranslateY = Math.max(minTranslateY, Math.min(maxTranslateY, newTranslateY));
             
             userImage.style.transform = `translate(-50%, -50%) translate(${newTranslateX}px, ${newTranslateY}px)`;
-
-            // 다음 움직임을 위해 현재 마우스 위치 및 이미지의 translate 값 업데이트
-            startX_drag = e.clientX;
-            startY_drag = e.clientY;
-            initialImageX = newTranslateX;
-            initialImageY = newTranslateY;
         }
     });
 
@@ -518,9 +481,6 @@
         if(isImageDragging) {
             isImageDragging = false;
             if(userImage) userImage.style.cursor = 'grab';
-            // 드래그가 끝나면 transform 값을 현재 위치로 고정 (CSS transform: translate(-50%, -50%)는 유지)
-            // 이전에 계산된 currentTranslateX, currentTranslateY가 현재 위치를 정확히 반영하므로 별도 초기화 불필요
-            // 단, 만약 초기화가 필요하다면 userImage.style.transform = 'translate(-50%, -50%)'; 로 리셋
         }
     });
 
@@ -532,10 +492,9 @@
         if(analyzeBtn) analyzeBtn.style.display = 'none';
         
         try {
-            // 얼굴 감지, 랜드마크, 성별/나이 정보 모두 요청
             const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options())
-                                        .withFaceLandmarks()
-                                        .withAgeAndGender(); 
+                                           .withFaceLandmarks()
+                                           .withAgeAndGender(); 
 
             if (!detection) {
                 if(loader) loader.style.display = 'none';
@@ -547,10 +506,9 @@
             const canvas = document.getElementById('overlay-canvas');
             const ctx = canvas.getContext('2d');
             
-            const imageRect = userImage.getBoundingClientRect(); // 이미지의 실제 렌더링된 크기/위치
-            const containerRect = guideContainer.getBoundingClientRect(); // 가이드 컨테이너의 크기/위치
+            const imageRect = userImage.getBoundingClientRect();
+            const containerRect = guideContainer.getBoundingClientRect();
 
-            // 캔버스 크기 및 위치를 이미지에 맞춰 조정
             canvas.style.top = `${imageRect.top - containerRect.top}px`;
             canvas.style.left = `${imageRect.left - containerRect.left}px`;
             canvas.style.width = `${imageRect.width}px`;
@@ -561,8 +519,8 @@
             const displaySize = { width: imageRect.width, height: imageRect.height };
             const resizedDetections = faceapi.resizeResults(detection, displaySize);
             
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // 캔버스 초기화
-            faceapi.draw.drawFaceLandmarks(canvas, resizedDetections); // 얼굴 랜드마크 그리기
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
             const landmarks = detection.landmarks;
             const jaw = landmarks.getJawOutline();
@@ -572,43 +530,28 @@
             const rightBrow = landmarks.getRightEyeBrow();
             const nose = landmarks.getNose();
 
-            // 성별 인식 결과 (Face-api.js 모델에 따라 정확도 달라질 수 있음)
             const gender = detection.gender; 
             const genderText = (gender === 'male') ? '남성' : '여성';
 
-
-            // 얼굴 비율 (가로/세로) - step5 판단의 주요 기준
-            const faceHeight = jaw[8].y - (jaw[0].y + jaw[16].y) / 2; // 턱 중간점 - 턱 양 끝 평균 Y
-            const faceWidth = jaw[16].x - jaw[0].x; // 턱 양 끝 가로 길이
+            const faceHeight = jaw[8].y - (jaw[0].y + jaw[16].y) / 2;
+            const faceWidth = jaw[16].x - jaw[0].x;
             const aspectRatio = faceHeight / faceWidth;
 
-            // --- 이마 넓이 개선 (foreheadText 판단 기준) ---
-            // 이마 높이 추정: 눈썹 중앙점 Y와 코 상단(미간) Y를 기준으로 얼굴 상단 Y를 추정합니다.
-            // (이마 랜드마크가 없어 간접적인 추론이므로 완벽하진 않습니다.)
             const browAverageY = (leftBrow[2].y + rightBrow[2].y) / 2; 
             const noseTopY = nose[0].y; 
-            // `estimatedTopFaceY` 계산 시 사용되는 `1.5`는 경험적 계수입니다.
-            // 이 값을 **높이면 이마가 더 넓게 인식될 가능성**이 높아지고, **낮추면 더 좁게 인식될 가능성**이 높아집니다.
             const estimatedTopFaceY = noseTopY - (noseTopY - browAverageY) * 1.5; 
             const foreheadHeight = browAverageY - estimatedTopFaceY; 
 
             let foreheadText = '평균적인';
             if (foreheadHeight > 0 && faceHeight > 0) {
                  const foreheadToFaceRatio = foreheadHeight / faceHeight; 
-                // 아래 임계값을 조절하여 '좁은 이마'와 '넓은 이마'의 기준을 변경할 수 있습니다.
-                // 첫 번째 임계값(0.20): 이 값보다 작으면 '좁은 이마'로 판단. (작을수록 좁다고 판단하기 쉬움)
-                // 두 번째 임계값(0.30): 이 값보다 크면 '넓은 이마'로 판단. (클수록 넓다고 판단하기 쉬움)
-                // 현재 0.20과 0.30 사이는 '평균적인' 이마로 분류됩니다.
-                if (foreheadToFaceRatio < 0.20) { // 기존 0.22 -> 0.20으로 다시 조정 (좀 더 좁아야 좁다고 판단)
-                    foreheadText = '좁은';
-                } else if (foreheadToFaceRatio > 0.30) { // 기존 0.32 -> 0.30으로 다시 조정 (좀 더 넓어야 넓다고 판단)
-                    foreheadText = '넓은';
-                }
+                 if (foreheadToFaceRatio < 0.20) {
+                     foreheadText = '좁은';
+                 } else if (foreheadToFaceRatio > 0.30) {
+                     foreheadText = '넓은';
+                 }
             }
 
-
-            // --- 턱 모양 (각도) 개선 (jawText 판단 기준) ---
-            // 턱선 각도 계산 로직은 동일
             const p1 = jaw[2], p2 = jaw[4], p3 = jaw[8]; 
             const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
             const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
@@ -620,12 +563,8 @@
             }
             
             let jawText;
-            // 성별에 따라 턱 각도 임계값 조정: 남성이 여성보다 평균적으로 턱선이 더 각짐
-            // `angleThresholdHard` (각진 턱 기준): 이 값보다 작으면 '각지고 뚜렷한'. (작을수록 각진 턱으로 판단하기 쉬움)
-            // `angleThresholdSoft` (둥근 턱 기준): 이 값보다 크면 '둥글고 부드러운'. (클수록 둥근 턱으로 판단하기 쉬움)
-            // 남성의 임계값을 여성보다 낮게 설정하여 남성이 더 쉽게 '각진' 턱으로 분류되도록 함.
-            const angleThresholdHard = (gender === 'male') ? 130 : 138; // 남성 135 -> 130 (더 각져야 각진 턱), 여성 140 -> 138 (조금 더 각진 기준)
-            const angleThresholdSoft = (gender === 'male') ? 148 : 155; // 남성 150 -> 148 (조금 더 둥글어야 둥근 턱), 여성 155 (유지)
+            const angleThresholdHard = (gender === 'male') ? 130 : 138;
+            const angleThresholdSoft = (gender === 'male') ? 148 : 155;
 
             if (jawAngle < angleThresholdHard) {
                 jawText = '각지고 뚜렷한';
@@ -635,58 +574,43 @@
                 jawText = '평균적인';
             }
 
-
-            // --- 눈 모양 (가로 길이) 개선 (eyeShapeText 판단 기준) ---
-            // 눈 가로 길이 / 눈 세로 높이 비율로 판단. 비율이 높으면 가로로 긴 눈, 낮으면 둥근 눈.
-            const oneEyeWidth = leftEye[3].x - leftEye[0].x; // 한쪽 눈 가로 길이
-            const oneEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2; // 한쪽 눈 세로 높이
+            const oneEyeWidth = leftEye[3].x - leftEye[0].x;
+            const oneEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2;
             let eyeShapeRatio = 0;
             if (oneEyeHeight > 0) {
                  eyeShapeRatio = oneEyeWidth / oneEyeHeight;
             }
             
             let eyeShapeText;
-            // 아래 임계값을 조절하여 '둥근 눈'과 '가로로 긴 눈'의 기준을 변경할 수 있습니다.
-            // 첫 번째 임계값(2.8): 이 값보다 작으면 '둥근 눈'으로 판단. (클수록 둥근 눈으로 판단하기 쉬움)
-            // 두 번째 임계값(3.5): 이 값보다 크면 '가로로 긴 눈'으로 판단. (작을수록 긴 눈으로 판단하기 쉬움)
-            // 현재는 2.8과 3.5 사이는 '평균적인' 눈으로 분류됩니다.
-            if (eyeShapeRatio < 2.8) { // 2.9 -> 2.8 (조금만 둥글어도 둥글다고 판단)
+            if (eyeShapeRatio < 2.8) {
                 eyeShapeText = '둥근';
-            } else if (eyeShapeRatio > 3.5) { // 3.6 -> 3.5 (조금만 길어도 길다고 판단)
+            } else if (eyeShapeRatio > 3.5) {
                 eyeShapeText = '가로로 긴';
             } else {
                 eyeShapeText = '평균적인';
             }
             
+            // 미간 간격 상세 텍스트
+            const eyeSpacingMidEyeDistance_detailed = rightEye[0].x - leftEye[3].x;
+            let eyeSpacingRatio_detailed = 0;
+            if (oneEyeWidth > 0) {
+                eyeSpacingRatio_detailed = eyeSpacingMidEyeDistance_detailed / oneEyeWidth;
+            }
+            let eyeSpacingTextDetailed = '평균적인';
+            if (eyeSpacingRatio_detailed < 0.85) { // 좁은 미간 기준
+                eyeSpacingTextDetailed = '좁은';
+            } else if (eyeSpacingRatio_detailed > 1.1) { // 넓은 미간 기준
+                eyeSpacingTextDetailed = '넓은';
+            }
 
-            // --- 눈과 눈썹 사이 거리 (step1_result 판단 기준) ---
             const leftEyeCenterY = (leftEye[1].y + leftEye[2].y + leftEye[4].y + leftEye[5].y) / 4;
             const leftEyebrowY = (landmarks.getLeftEyeBrow()[0].y + landmarks.getLeftEyeBrow()[1].y + landmarks.getLeftEyeBrow()[2].y + landmarks.getLeftEyeBrow()[3].y + landmarks.getLeftEyeBrow()[4].y) / 5;
             const eyeToEyebrowDistance = leftEyeCenterY - leftEyebrowY;
-            const normalizedDistance = eyeToEyebrowDistance / oneEyeHeight; // 눈 높이 대비 눈썹 거리 비율
-            // 이 임계값(0.7)을 조절하여 '눈과 눈썹 사이가 멀다(A)'와 '좁다(B)'의 기준을 변경할 수 있습니다.
-            // 값이 작을수록 '멀다(A)'로 판단하기 쉬워집니다.
+            const normalizedDistance = eyeToEyebrowDistance / oneEyeHeight;
             const step1_result = (normalizedDistance > 0.7) ? 'A' : 'B';
-
-
-            // --- 얼굴선 인상 (step2_result 판단 기준) ---
-            // 턱 각도(`jawAngle`)를 직접 사용.
-            // `140`은 '각진' 인상과 '둥근' 인상의 경계점입니다. 이 값을 조절하여 판단을 변경할 수 있습니다.
-            // 값이 작을수록 '각진(D)' 인상으로 판단하기 쉬워집니다.
             const step2_result = (jawAngle < 140) ? 'D' : 'C'; 
-
-
-            // --- 눈 모양 (step3_result 판단 기준) ---
-            // `eyeShapeRatio`를 직접 사용.
-            // `2.8`은 '둥근 눈(E)'과 '긴 눈(F)'의 경계점입니다. 이 값을 조절하여 판단을 변경할 수 있습니다.
-            // 값이 작을수록 '둥근(E)' 눈으로 판단하기 쉬워집니다.
             const step3_result = (eyeShapeRatio < 2.8) ? 'E' : 'F'; 
 
-
-            // --- 이목구비 집중도 (step4_result 판단 기준) ---
-            // 미간 간격 / 한쪽 눈 너비 비율(`eyeSpacingRatio`)을 사용.
-            // `0.9`는 '중앙에 모임(A)'과 '넓게 퍼짐(B)'의 경계점입니다. 이 값을 조절하여 판단을 변경할 수 있습니다.
-            // 값이 작을수록 '중앙에 모임(A)'으로 판단하기 쉬워집니다.
             const eyeSpacingMidEyeDistance = rightEye[0].x - leftEye[3].x;
             const eyeSpacingOneEyeWidth = leftEye[3].x - leftEye[0].x;
             let eyeSpacingRatioForStep4 = 0;
@@ -694,27 +618,14 @@
                  eyeSpacingRatioForStep4 = eyeSpacingMidEyeDistance / eyeSpacingOneEyeWidth;
             }
             const step4_result = (eyeSpacingRatioForStep4 < 0.9) ? 'A' : 'B'; 
-
-
-            // --- 얼굴 가로/세로 비율 (step5_result 판단 기준) ---
-            // `aspectRatio` (얼굴 높이 / 얼굴 너비)를 사용.
-            // `1.25`는 '동그란 얼굴형(C)'과 '타원형/긴 얼굴형(D)'의 경계점입니다. 이 값을 조절하여 판단을 변경할 수 있습니다.
-            // 값이 작을수록 '동그란(C)' 얼굴형으로 판단하기 쉬워집니다.
             const step5_result = (aspectRatio < 1.25) ? 'C' : 'D'; 
 
-
-            // --- 미간 너비와 인상 (step6_result 판단 기준) ---
-            // `step4_result` (이목구비 집중도)와 `step2_result` (얼굴선 인상)를 복합적으로 활용합니다.
             let step6_result;
-            // 'E' (미간 좁고 부드러운 인상)으로 판단되는 조건:
-            // 이목구비가 중앙에 모여있고 (step4 'A'), 얼굴선이 둥글 때 (step2 'C').
-            // 이 조건을 강화/완화하려면 위의 step4_result와 step2_result의 판단 임계값을 조절해야 합니다.
             if (step4_result === 'A' && step2_result === 'C') { 
                 step6_result = 'E';
             } else {
                 step6_result = 'F';
             }
-
 
             const analysisResult = { 
                 step1: step1_result, 
@@ -727,10 +638,10 @@
                 forehead: foreheadText,
                 jaw: jawText,
                 eyeShape: eyeShapeText,
-                eyeSpacing: eyeSpacingTextDetailed // 상세 미간 간격 텍스트
+                eyeSpacing: eyeSpacingTextDetailed
             };
             
-            displayResults(analysisResult, true); // 사진 분석 결과임을 알림
+            displayResults(analysisResult, true);
             showPage('result-page');
 
         } catch (error) {
@@ -757,7 +668,7 @@
             alert("모든 질문에 답변해주세요!");
             return;
         }
-        displayResults(analysisResult, false); // 설문 분석 결과임을 알림
+        displayResults(analysisResult, false);
         showPage('result-page');
     }
 
@@ -766,14 +677,12 @@
         const content = document.getElementById('result-content');
         if (!content) return;
 
-        // 1. 최종 유형(Type) 결정 로직 (설문/사진 분석 결과의 step1, step2에 기반)
         let finalType;
         if (analysis.step2 === 'D' && analysis.step1 === 'A') finalType = 'A';
         else if (analysis.step2 === 'D' && analysis.step1 === 'B') finalType = 'B';
         else if (analysis.step2 === 'C' && analysis.step1 === 'A') finalType = 'C';
         else finalType = 'D';
 
-        // 2. 각 타입별 정보
         const typeInfo = {
             'A': {
                 title: "Type A : 세련된 파워 셀럽형",
@@ -803,7 +712,6 @@
 
         const currentType = typeInfo[finalType];
         
-        // 상세 가이드 텍스트
         const detailTexts = {
             shape: analysis.step2 === 'D' ? '산과 각을 살린' : '부드러운 곡선',
             thickness: analysis.step1 === 'A' ? '도톰한' : '얇은',
@@ -811,7 +719,6 @@
             detail: `눈썹 ${analysis.step4 === 'A' ? '산을 길게, 꼬리를 짧게' : '산을 짧게, 꼬리를 길게'}, ${analysis.step6 === 'E' ? '앞머리는 옅게 표현' : '앞머리 결을 살려 표현'}`
         };
 
-        // 사진 분석 결과일 경우에만 추가 정보 표시
         let analysisDetailsHTML = '';
         if (fromPhoto) {
             analysisDetailsHTML = `
@@ -830,7 +737,6 @@
             `;
         }
 
-        // 최종 결과 HTML 구조
         const resultHTML = `
             <div class="result-card">
                 <h3>${currentType.title}</h3>
