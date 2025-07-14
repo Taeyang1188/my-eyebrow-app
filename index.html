@@ -287,11 +287,12 @@
         try {
             await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
             await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL); // 성별/나이 인식 모델 추가
             modelsLoaded = true;
             console.log("모델 로딩 완료!");
         } catch (error) {
             console.error("모델 로딩 실패:", error);
-            alert("분석 모델을 불러오는 데 실패했습니다. (경로 확인: " + MODEL_URL + ")");
+            alert("분석 모델을 불러오는 데 실패했습니다. (경로 확인: " + MODEL_URL + ") 모델 파일이 models 폴더에 올바르게 위치해 있는지, 로컬 서버를 통해 접근하는지 확인해주세요.");
         }
     }
     loadModels();
@@ -304,7 +305,7 @@
 
     if (fileInput) {
         fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0]; // [0] 추가
+            const file = event.target.files[0];
             if (!file) return;
             document.getElementById('overlay-canvas').getContext('2d').clearRect(0,0,300,400);
             const reader = new FileReader();
@@ -361,15 +362,15 @@
         
         const sectionWidth = (rx * 2) / 3;
         const startX = 150 - rx;
-        greenLines[0].setAttribute('x1', startX + sectionWidth); // [0] 추가
-        greenLines[0].setAttribute('x2', startX + sectionWidth); // [0] 추가
-        greenLines[0].setAttribute('y1', 200 - ry); // [0] 추가
-        greenLines[0].setAttribute('y2', 200 + ry); // [0] 추가
+        greenLines[0].setAttribute('x1', startX + sectionWidth);
+        greenLines[0].setAttribute('x2', startX + sectionWidth);
+        greenLines[0].setAttribute('y1', 200 - ry);
+        greenLines[0].setAttribute('y2', 200 + ry);
         
-        greenLines[1].setAttribute('x1', startX + (sectionWidth * 2)); // [1] 추가
-        greenLines[1].setAttribute('x2', startX + (sectionWidth * 2)); // [1] 추가
-        greenLines[1].setAttribute('y1', 200 - ry); // [1] 추가
-        greenLines[1].setAttribute('y2', 200 + ry); // [1] 추가
+        greenLines[1].setAttribute('x1', startX + (sectionWidth * 2));
+        greenLines[1].setAttribute('x2', startX + (sectionWidth * 2));
+        greenLines[1].setAttribute('y1', 200 - ry);
+        greenLines[1].setAttribute('y2', 200 + ry);
 
         draggableLineVisual.setAttribute('x1', 150 - rx);
         draggableLineVisual.setAttribute('x2', 150 + rx);
@@ -471,8 +472,11 @@
         if(analyzeBtn) analyzeBtn.style.display = 'none';
         
         try {
-            const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks();
-            
+            // 성별/나이 인식 모델을 로드했으므로 withAgeAndGender() 추가
+            const detection = await faceapi.detectSingleFace(userImage, new faceapi.SsdMobilenetv1Options())
+                                        .withFaceLandmarks()
+                                        .withAgeAndGender(); // 성별/나이 정보 추가
+
             if (!detection) {
                 if(loader) loader.style.display = 'none';
                 if(analyzeBtn) analyzeBtn.style.display = 'block';
@@ -507,87 +511,97 @@
             const rightBrow = landmarks.getRightEyeBrow();
             const nose = landmarks.getNose();
 
+            // 성별 인식 결과
+            const gender = detection.gender; // 'male' 또는 'female'
+            const genderText = (gender === 'male') ? '남성' : '여성';
+
+
             // 얼굴 비율 (가로/세로)
-            const faceHeight = jaw[8].y - (jaw[0].y + jaw[16].y) / 2; // 턱 중간점 - 턱 양 끝 평균 Y
-            const faceWidth = jaw[16].x - jaw[0].x; // 턱 양 끝 가로 길이
+            const faceHeight = jaw[8].y - (jaw[0].y + jaw[16].y) / 2;
+            const faceWidth = jaw[16].x - jaw[0].x;
             const aspectRatio = faceHeight / faceWidth;
 
-            // 이마 넓이 (눈썹 ~ 헤어라인 추정) - 간접적인 판단
-            // 눈썹 가장 높은 Y와 얼굴 최상단 Y(코 끝 기준점 활용) 대비
-            const browAverageY = (leftBrow[2].y + rightBrow[2].y) / 2; // 눈썹 중앙 Y값
-            const noseTopY = nose[0].y; // 콧대 시작 (미간)
-            const foreheadHeight = noseTopY - browAverageY; // 미간-눈썹선으로부터 이마 높이 대략 측정
+            // 이마 넓이 개선 (눈썹 위~얼굴 상단 추정)
+            // 눈썹 중앙점 평균 Y
+            const browAverageY = (leftBrow[2].y + rightBrow[2].y) / 2;
+            // 코 끝 Y
+            const noseTipY = nose[5].y; 
+            // 얼굴의 최상단 추정 (눈썹과 코 끝 사이의 거리를 기반으로 상대적인 이마 높이 추정)
+            // (이마가 넓으면 눈썹과 코 끝 사이 거리에 비해 눈썹 위 얼굴 영역이 길다)
+            const topOfFaceY = landmarks.getNose()[0].y - (noseTipY - browAverageY) * 1.5; // 경험적 계수 조정
+            const foreheadHeight = browAverageY - topOfFaceY; // 이마 높이
 
-            let foreheadText = '측정 어려움';
+            let foreheadText = '평균적인';
             if (foreheadHeight > 0) { // 유효한 값일 경우에만 판단
-                // 이마 높이와 얼굴 전체 높이 대비 비율로 판단 (임계값은 사진마다 다를 수 있으니 테스트 필요)
-                // 현재는 browAverageY 값의 절대적 위치로만 판단하므로, 더 정교한 로직 필요
-                // 여기서는 간단하게 얼굴 높이 대비 이마 높이 비율로 판단
-                const relativeForeheadHeight = foreheadHeight / faceHeight;
-                if (relativeForeheadHeight < 0.20) { // 임계값 조정 가능
+                 const foreheadToFaceRatio = foreheadHeight / faceHeight; // 이마 높이 / 얼굴 전체 높이
+                if (foreheadToFaceRatio < 0.20) { // 남성/여성 얼굴 특징 고려하여 임계값 조정
                     foreheadText = '좁은';
-                } else if (relativeForeheadHeight > 0.30) { // 임계값 조정 가능
+                } else if (foreheadToFaceRatio > 0.28) {
                     foreheadText = '넓은';
-                } else {
-                    foreheadText = '평균적인';
                 }
             }
 
 
-            // 턱 모양 (각도)
-            const p1 = jaw[2], p2 = jaw[4], p3 = jaw[8]; // 턱선 랜드마크 활용
+            // 턱 모양 (각도) 개선
+            // 턱선 각도 재계산 및 남성/여성 특징 고려
+            // 남성은 일반적으로 턱선이 더 각지고 뚜렷함
+            const p1 = jaw[2], p2 = jaw[4], p3 = jaw[8];
             const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
             const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
             const dotProduct = v1.x * v2.x + v1.y * v2.y;
             const magnitude1 = Math.sqrt(v1.x**2 + v1.y**2), magnitude2 = Math.sqrt(v2.x**2 + v2.y**2);
             let jawAngle = 180; // 기본값
-            if (magnitude1 > 0 && magnitude2 > 0) { // 0으로 나누는 것 방지
+            if (magnitude1 > 0 && magnitude2 > 0) {
                 jawAngle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
             }
             
             let jawText;
-            if (jawAngle < 140) { // 더 각져야 D
-                jawText = '각지고 또렷한';
-            } else if (jawAngle > 155) { // 더 둥글어야 C
+            // 성별에 따라 턱 각도 임계값 조정 (남성이 여성보다 평균적으로 각도가 작음)
+            const angleThresholdHard = (gender === 'male') ? 135 : 140; // 남성이 더 낮은 각도에서 각진 것으로
+            const angleThresholdSoft = (gender === 'male') ? 150 : 155; // 남성이 더 낮은 각도에서 둥근 것으로
+
+            if (jawAngle < angleThresholdHard) {
+                jawText = '각지고 뚜렷한';
+            } else if (jawAngle > angleThresholdSoft) {
                 jawText = '둥글고 부드러운';
             } else {
                 jawText = '평균적인';
             }
 
-
             // 눈 사이 간격 (미간)
             const interEyeDistance = rightEye[0].x - leftEye[3].x;
-            const eyeWidth = leftEye[3].x - leftEye[0].x; // 한쪽 눈의 너비
-            const eyeSpacingRatio = interEyeDistance / eyeWidth; // 눈 너비 대비 미간 비율
+            const eyeWidth = leftEye[3].x - leftEye[0].x;
+            const eyeSpacingRatio = interEyeDistance / eyeWidth;
 
             let eyeSpacingText;
-            if (eyeSpacingRatio < 0.9) { // 좁은 미간
+            if (eyeSpacingRatio < 0.9) {
                 eyeSpacingText = '좁은';
-            } else if (eyeSpacingRatio > 1.1) { // 넓은 미간
+            } else if (eyeSpacingRatio > 1.1) {
                 eyeSpacingText = '넓은';
             } else {
                 eyeSpacingText = '평균적인';
             }
             
-            // 기존 step1~6 결과도 다시 계산 (재확인 및 조정)
+            // 기존 step1~6 결과도 다시 계산 및 임계값 조정
             const leftEyeCenterY = (leftEye[1].y + leftEye[2].y + leftEye[4].y + leftEye[5].y) / 4;
             const leftEyebrowY = (landmarks.getLeftEyeBrow()[0].y + landmarks.getLeftEyeBrow()[1].y + landmarks.getLeftEyeBrow()[2].y + landmarks.getLeftEyeBrow()[3].y + landmarks.getLeftEyeBrow()[4].y) / 5;
             const eyeToEyebrowDistance = leftEyeCenterY - leftEyebrowY;
             const leftEyeHeight = (leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2;
             const normalizedDistance = eyeToEyebrowDistance / leftEyeHeight;
-            const step1_result = (normalizedDistance > 0.8) ? 'A' : 'B'; // 눈과 눈썹 사이: 멀다(A) vs 좁다(B)
+            const step1_result = (normalizedDistance > 0.7) ? 'A' : 'B'; // 0.8 -> 0.7로 조정 (A가 덜 나오도록)
 
-            const step2_result = (jawAngle < 140) ? 'D' : 'C'; // 얼굴선: 각지다(D) vs 둥글다(C)
+            const step2_result = (jawAngle < 140) ? 'D' : 'C'; // 턱 각도에 따라 (D:각진, C:둥근)
 
-            const step3_result = (eyeWidth / ((leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2) < 3.0) ? 'E' : 'F'; // 눈 모양: 둥글다(E) vs 길다(F)
+            const step3_result = (eyeWidth / ((leftEye[4].y + leftEye[5].y) / 2 - (leftEye[1].y + leftEye[2].y) / 2) < 2.8) ? 'E' : 'F'; // 눈 가로/세로 비율 (E:둥근, F:긴) - 3.0 -> 2.8 조정
 
-            const step4_result = (eyeSpacingRatio < 0.9) ? 'A' : 'B'; // 이목구비 집중도: 중앙에 모임(A) vs 넓게 퍼짐(B)
+            const step4_result = (eyeSpacingRatio < 0.9) ? 'A' : 'B'; // 이목구비 집중도 (A:모임, B:퍼짐)
 
-            const step5_result = (aspectRatio < 1.25) ? 'C' : 'D'; // 얼굴 가로/세로 비율: 동그람(C) vs 김(D)
+            const step5_result = (aspectRatio < 1.25) ? 'C' : 'D'; // 얼굴 가로/세로 비율 (C:동그람, D:김)
 
-            // step6은 미간 너비와 인상인데, step4와 관련이 깊으므로, 좀 더 정교하게 조합
             let step6_result;
-            if (eyeSpacingRatio < 0.9 && jawAngle > 150) { // 미간 좁고 얼굴선 부드러움
+            // 미간 너비와 인상 (복합적 판단)
+            // step4 (이목구비 집중도), step2 (얼굴선)과 연관
+            if (step4_result === 'A' && step2_result === 'C') { // 미간 좁고 얼굴선 부드러움
                 step6_result = 'E'; // 미간 좁고 부드러운 인상
             } else {
                 step6_result = 'F'; // 미간 넓거나 또렷한 인상
@@ -601,9 +615,10 @@
                 step4: step4_result, 
                 step5: step5_result, 
                 step6: step6_result,
-                forehead: foreheadText, // 새로 추가된 분석 결과
-                jaw: jawText,          // 새로 추가된 분석 결과
-                eyeSpacing: eyeSpacingText // 새로 추가된 분석 결과
+                gender: genderText,     // 성별 추가
+                forehead: foreheadText,
+                jaw: jawText,
+                eyeSpacing: eyeSpacingText
             };
             
             displayResults(analysisResult, true);
@@ -611,7 +626,7 @@
 
         } catch (error) {
             console.error("사진 분석 중 오류 발생:", error);
-            alert("사진을 분석하는 중에 오류가 발생했습니다. 얼굴이 잘 나온 다른 사진으로 시도해보거나, 설문으로 진단하는 방법을 이용해주세요.");
+            alert("사진을 분석하는 중에 오류가 발생했습니다. 얼굴이 잘 나온 다른 사진으로 시도해보거나, 설문으로 진단하는 방법을 이용해주세요. (세부 오류: " + error.message + ")");
         } finally {
             if(loader) loader.style.display = 'none';
             if(analyzeBtn) analyzeBtn.style.display = 'block';
@@ -690,10 +705,12 @@
             analysisDetailsHTML = `
                 <h4>사진 분석 결과</h4>
                 <ul style="list-style-type: disc; margin-left: 20px;">
-                    <li>얼굴형: ${analysis.forehead} 이마와 ${analysis.jaw} 턱을 가지고 있습니다.</li>
-                    <li>미간 간격: 눈 사이 간격은 ${analysis.eyeSpacing} 편입니다.</li>
-                    <li>얼굴 비율: 가로/세로 비율은 ${analysis.step5 === 'C' ? '동그란 얼굴형에 가깝고' : '타원형/긴 얼굴형에 가깝습니다'}.</li>
-                    <li>눈과 눈썹 사이: ${analysis.step1 === 'A' ? '눈과 눈썹 사이가 멀고' : '눈과 눈썹 사이가 좁고'}, ${analysis.step3 === 'E' ? '눈은 동그란 편입니다' : '눈은 가로로 긴 편입니다'}.</li>
+                    <li>예상 성별: <strong>${analysis.gender}</strong></li>
+                    <li>이마: <strong>${analysis.forehead}</strong> 편입니다.</li>
+                    <li>턱: <strong>${analysis.jaw}</strong> 편입니다.</li>
+                    <li>미간 간격: <strong>${analysis.eyeSpacing}</strong> 편입니다.</li>
+                    <li>얼굴 비율: 가로/세로 비율은 <strong>${analysis.step5 === 'C' ? '동그란 얼굴형에 가깝고' : '타원형/긴 얼굴형에 가깝습니다'}</strong>.</li>
+                    <li>눈과 눈썹 사이: <strong>${analysis.step1 === 'A' ? '눈과 눈썹 사이가 멀고' : '눈과 눈썹 사이가 좁고'}</strong>, <strong>${analysis.step3 === 'E' ? '눈은 동그란 편입니다' : '눈은 가로로 긴 편입니다'}</strong>.</li>
                 </ul>
                 <p class="photo-basis">※ 위 결과는 AI 분석에 기반한 것으로, 실제와 다를 수 있습니다.</p>
                 <hr style="border-top: 1px dashed #ccc; margin: 20px 0;">
